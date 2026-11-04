@@ -1,0 +1,285 @@
+"""Contratos Pydantic de la API v1. Montos: enteros en centavos (StrictInt: se rechazan floats)."""
+from datetime import date, datetime
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+
+MAX_CENTS = 1_000_000_000_000
+Cents = Annotated[int, Field(strict=True, gt=0, le=MAX_CENTS)]
+NonNegCents = Annotated[int, Field(strict=True, ge=0, le=MAX_CENTS)]
+SignedCents = Annotated[int, Field(strict=True, ge=-MAX_CENTS, le=MAX_CENTS)]
+Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+Description = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)]
+Notes = Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000)]
+Day = Annotated[int, Field(strict=True, ge=1, le=31)]
+Id = Annotated[int, Field(strict=True, gt=0)]
+Month = Annotated[str, StringConstraints(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")]
+
+
+class Strict(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+# ------------------------------------------------------------------ auth
+class LoginIn(Strict):
+    email: Annotated[str, StringConstraints(strip_whitespace=True, to_lower=True, min_length=3, max_length=254)]
+    password: Annotated[str, StringConstraints(min_length=1, max_length=256)]
+
+
+class TokenOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_at: datetime
+
+
+class UserOut(BaseModel):
+    id: int
+    email: str
+    display_name: str | None
+    currency: str
+
+
+# ------------------------------------------------------------------ accounts
+Subtype = Literal[
+    "cash", "checking", "savings", "investment", "credit_card", "loan", "other_liability", "income", "expense"
+]
+
+
+class AccountCreate(Strict):
+    name: Name
+    subtype: Subtype
+    currency: Annotated[str, StringConstraints(pattern=r"^[A-Z]{3}$")] | None = None
+    opening_balance_cents: NonNegCents = 0
+    opening_date: date | None = None
+    credit_limit_cents: NonNegCents | None = None
+    statement_day: Day | None = None
+    due_day: Day | None = None
+    interest_rate_bps: Annotated[int, Field(strict=True, ge=0, le=100_000)] | None = None
+
+
+class AccountUpdate(Strict):
+    name: Name | None = None
+    credit_limit_cents: NonNegCents | None = None
+    statement_day: Day | None = None
+    due_day: Day | None = None
+    interest_rate_bps: Annotated[int, Field(strict=True, ge=0, le=100_000)] | None = None
+
+
+class AccountOut(BaseModel):
+    id: int
+    name: str
+    account_class: str
+    subtype: str
+    currency: str
+    credit_limit_cents: int | None
+    statement_day: int | None
+    due_day: int | None
+    interest_rate_bps: int | None
+    is_system: bool
+    archived_at: datetime | None
+    balance_cents: int
+    created_at: datetime
+
+
+class ReconcileIn(Strict):
+    statement_balance_cents: SignedCents
+    as_of: date
+    create_adjustment: bool = False
+
+
+class ReconcileOut(BaseModel):
+    account_id: int
+    as_of: date
+    ledger_balance_cents: int
+    statement_balance_cents: int
+    difference_cents: int
+    adjustment_transaction_id: int | None
+
+
+# ------------------------------------------------------------------ transactions
+class _TxBase(Strict):
+    occurred_on: date
+    description: Description = ""
+    notes: Notes | None = None
+
+
+class IncomeIn(_TxBase):
+    kind: Literal["income"]
+    account_id: Id
+    category_id: Id
+    amount_cents: Cents
+
+
+class ExpenseIn(_TxBase):
+    kind: Literal["expense"]
+    account_id: Id
+    category_id: Id
+    amount_cents: Cents
+
+
+class CardPurchaseIn(_TxBase):
+    kind: Literal["card_purchase"]
+    card_account_id: Id
+    category_id: Id
+    amount_cents: Cents
+
+
+class TransferIn(_TxBase):
+    kind: Literal["transfer"]
+    from_account_id: Id
+    to_account_id: Id
+    amount_cents: Cents
+
+
+class CardPaymentIn(_TxBase):
+    kind: Literal["card_payment"]
+    from_account_id: Id
+    card_account_id: Id
+    amount_cents: Cents
+
+
+class LoanPaymentIn(_TxBase):
+    kind: Literal["loan_payment"]
+    from_account_id: Id
+    loan_account_id: Id
+    principal_cents: NonNegCents
+    interest_cents: NonNegCents = 0
+    interest_category_id: Id | None = None
+
+    @model_validator(mode="after")
+    def _check(self):
+        if self.principal_cents + self.interest_cents <= 0:
+            raise ValueError("El pago debe tener capital o interés mayor a cero")
+        if self.interest_cents > 0 and self.interest_category_id is None:
+            raise ValueError("Indica la categoría de gasto para los intereses")
+        return self
+
+
+class LoanDisbursementIn(_TxBase):
+    kind: Literal["loan_disbursement"]
+    loan_account_id: Id
+    to_account_id: Id
+    amount_cents: Cents
+
+
+class AdjustmentIn(_TxBase):
+    kind: Literal["adjustment"]
+    account_id: Id
+    delta_cents: SignedCents
+
+    @model_validator(mode="after")
+    def _nonzero(self):
+        if self.delta_cents == 0:
+            raise ValueError("El ajuste no puede ser cero")
+        return self
+
+
+TransactionIn = Annotated[
+    IncomeIn | ExpenseIn | CardPurchaseIn | TransferIn | CardPaymentIn | LoanPaymentIn | LoanDisbursementIn
+    | AdjustmentIn,
+    Field(discriminator="kind"),
+]
+
+
+class EntryOut(BaseModel):
+    account_id: int
+    account_name: str
+    account_class: str
+    amount_cents: int
+
+
+class TransactionOut(BaseModel):
+    id: int
+    kind: str
+    occurred_on: date
+    description: str
+    notes: str | None
+    created_at: datetime
+    voided_at: datetime | None
+    void_reason: str | None
+    reverses_id: int | None
+    reversed_by_id: int | None
+    amount_cents: int
+    entries: list[EntryOut]
+
+
+class TransactionPage(BaseModel):
+    items: list[TransactionOut]
+    total: int
+
+
+class VoidIn(Strict):
+    reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+
+
+# ------------------------------------------------------------------ obligations
+class ObligationCreate(Strict):
+    name: Name
+    kind: Literal["bill", "loan_installment", "card_payment", "income_expected", "other"]
+    amount_cents: Cents
+    due_date: date
+    recurrence: Literal["none", "monthly", "yearly"] = "none"
+    pay_from_account_id: Id | None = None
+    target_account_id: Id | None = None
+    category_id: Id | None = None
+
+
+class ObligationUpdate(Strict):
+    name: Name | None = None
+    amount_cents: Cents | None = None
+    due_date: date | None = None
+    recurrence: Literal["none", "monthly", "yearly"] | None = None
+    pay_from_account_id: Id | None = None
+    target_account_id: Id | None = None
+    category_id: Id | None = None
+
+
+class ObligationSettle(Strict):
+    account_id: Id | None = None
+    amount_cents: Cents | None = None
+    interest_cents: NonNegCents = 0
+    interest_category_id: Id | None = None
+    occurred_on: date | None = None
+
+
+class ObligationOut(BaseModel):
+    id: int
+    name: str
+    kind: str
+    direction: str
+    amount_cents: int
+    due_date: date
+    recurrence: str
+    status: str
+    pay_from_account_id: int | None
+    target_account_id: int | None
+    category_id: int | None
+    settled_transaction_id: int | None
+    created_at: datetime
+
+
+class UpcomingItem(BaseModel):
+    source: Literal["obligation", "card"]
+    ref_id: int
+    name: str
+    due_date: date
+    amount_cents: int
+    direction: Literal["outflow", "inflow"]
+    overdue: bool
+
+
+# ------------------------------------------------------------------ budgets
+class BudgetIn(Strict):
+    category_id: Id
+    month: Month
+    amount_cents: Cents
+
+
+class BudgetOut(BaseModel):
+    id: int
+    category_id: int
+    category_name: str
+    month: str
+    amount_cents: int
+    spent_cents: int
+    remaining_cents: int

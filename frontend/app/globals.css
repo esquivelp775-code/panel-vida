@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+:root { color-scheme: light dark; }
+html, body { background: #f4f6f8; color: #0f172a; }
+@media (prefers-color-scheme: dark) {
+  html, body { background: #0b1220; color: #e5e7eb; }
+}
+body { -webkit-tap-highlight-color: transparent; padding-bottom: env(safe-area-inset-bottom); }
+input, select, textarea, button { font: inherit; }
