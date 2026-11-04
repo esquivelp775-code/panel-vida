@@ -33,7 +33,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="mx-auto min-h-screen max-w-xl">
-      <main className="px-4 pb-32 pt-4">{children}</main>
+      <main className="px-4 pb-40 pt-4">{children}</main>
       {!onRegister && (
         <Link href="/registrar/" aria-label="Registrar movimiento"
           className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-3xl font-light text-white shadow-lg hover:bg-emerald-700 sm:right-[calc(50%-18rem)]">

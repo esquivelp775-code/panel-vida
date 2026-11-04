@@ -22,6 +22,10 @@ function newKey(): string {
   return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
 }
 
+const SPENDING_ORDER = ["cash", "checking", "credit_card", "savings", "investment"];
+const bySpendingOrder = (a: Account, b: Account) =>
+  SPENDING_ORDER.indexOf(a.subtype) - SPENDING_ORDER.indexOf(b.subtype) || a.name.localeCompare(b.name, "es");
+
 /** Select de cuentas que recuerda la última elección por clave. */
 function useRemembered(key: string, options: Account[]) {
   const [val, setVal] = useState("");
@@ -40,10 +44,11 @@ export default function Registrar() {
   const changeMode = (m: Mode) => { setMode(m); setPref("last_mode", m); setError(null); };
 
   const all = useMemo(() => (accounts || []).filter((a) => !a.is_system && !a.archived_at), [accounts]);
-  const assets = useMemo(() => all.filter((a) => a.account_class === "asset"), [all]);
-  const payable = useMemo(() => all.filter((a) => a.account_class === "asset" || a.subtype === "credit_card"), [all]);
+  // Cuentas de uso diario primero: el valor por defecto de un gasto no debe ser el ahorro.
+  const assets = useMemo(() => all.filter((a) => a.account_class === "asset").sort(bySpendingOrder), [all]);
+  const payable = useMemo(() => all.filter((a) => a.account_class === "asset" || a.subtype === "credit_card").sort(bySpendingOrder), [all]);
   const cards = useMemo(() => all.filter((a) => a.subtype === "credit_card"), [all]);
-  const loans = useMemo(() => all.filter((a) => a.subtype === "loan"), [all]);
+  const loans = useMemo(() => all.filter((a) => a.subtype === "loan" || a.subtype === "other_liability"), [all]);
   const transferTo = useMemo(() => all.filter((a) => a.account_class === "asset" || a.account_class === "liability"), [all]);
   const expCats = useMemo(() => all.filter((a) => a.subtype === "expense"), [all]);
   const incCats = useMemo(() => all.filter((a) => a.subtype === "income"), [all]);
