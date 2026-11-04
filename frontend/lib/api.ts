@@ -33,7 +33,7 @@ export interface ReconcileResult {
   adjustment_transaction_id: number | null;
 }
 
-export type TxKind = "income" | "expense" | "card_purchase" | "transfer" | "card_payment" | "loan_payment" | "loan_disbursement" | "adjustment" | "opening_balance" | "reversal" | string;
+export type TxKind = "income" | "expense" | "card_purchase" | "transfer" | "card_payment" | "loan_payment" | "loan_disbursement" | "adjustment" | "opening_balance" | "reversal" | "refund" | string;
 export interface Entry { account_id: number; account_name: string; account_class: AccountClass; amount_cents: number }
 export interface Transaction {
   id: number; kind: TxKind; occurred_on: string; description: string; notes: string | null; created_at: string;
@@ -43,6 +43,7 @@ export interface Transaction {
 export type TxCreate =
   | { kind: "income"; occurred_on: string; description: string; notes?: string; account_id: number; category_id: number; amount_cents: number }
   | { kind: "expense"; occurred_on: string; description: string; notes?: string; account_id: number; category_id: number; amount_cents: number }
+  | { kind: "refund"; occurred_on: string; description: string; notes?: string; account_id: number; category_id: number; amount_cents: number }
   | { kind: "transfer"; occurred_on: string; description: string; notes?: string; from_account_id: number; to_account_id: number; amount_cents: number }
   | { kind: "card_payment"; occurred_on: string; description: string; notes?: string; from_account_id: number; card_account_id: number; amount_cents: number }
   | { kind: "loan_payment"; occurred_on: string; description: string; notes?: string; from_account_id: number; loan_account_id: number; principal_cents: number; interest_cents: number; interest_category_id?: number };
@@ -55,8 +56,9 @@ export interface Obligation {
   status: "pending" | "paid" | "cancelled"; pay_from_account_id: number | null; target_account_id: number | null;
   category_id: number | null; settled_transaction_id: number | null; created_at: string;
 }
-export type ObligationCreate = Partial<Omit<Obligation, "id" | "status" | "settled_transaction_id" | "created_at">> &
-  Pick<Obligation, "name" | "kind" | "direction" | "amount_cents" | "due_date" | "recurrence">;
+// `direction` lo deriva el servidor a partir de `kind`; el API rechaza campos extra.
+export type ObligationCreate = Partial<Omit<Obligation, "id" | "status" | "settled_transaction_id" | "created_at" | "direction">> &
+  Pick<Obligation, "name" | "kind" | "amount_cents" | "due_date" | "recurrence">;
 export interface UpcomingItem { source: "obligation" | "card"; ref_id: number; name: string; due_date: string; amount_cents: number; direction: "outflow" | "inflow"; overdue: boolean }
 
 export interface Budget { id: number; category_id: number; category_name: string; month: string; amount_cents: number; spent_cents: number; remaining_cents: number }

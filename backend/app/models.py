@@ -39,6 +39,7 @@ TRANSACTION_KINDS = (
     "adjustment",
     "opening_balance",
     "reversal",
+    "refund",
 )
 
 
@@ -120,6 +121,8 @@ class Obligation(Base):
     target_account_id: Mapped[int | None] = mapped_column(ForeignKey("accounts.id"))
     category_id: Mapped[int | None] = mapped_column(ForeignKey("accounts.id"))
     settled_transaction_id: Mapped[int | None] = mapped_column(ForeignKey("transactions.id"))
+    anchor_day: Mapped[int | None] = mapped_column(SmallInteger)
+    generated_from_id: Mapped[int | None] = mapped_column(ForeignKey("obligations.id"), unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

@@ -21,7 +21,7 @@ alembic upgrade head
 python -m app.cli create-user --email demo@example.com
 python -m app.cli seed-demo --email demo@example.com   # datos ficticios
 uvicorn app.main:app --reload # http://localhost:8000/docs
-python -m pytest -q           # 47 pruebas contra PostgreSQL
+python -m pytest -q           # 59 pruebas contra PostgreSQL
 
 cd ../frontend
 npm install

@@ -11,11 +11,11 @@ Leyenda: ✅ hecho y probado · 🟡 parcial · ⬜ pendiente
 | 4 Tarjetas y deudas | ciclo corte/pago, préstamos capital/interés, vencimientos | ✅ (sin MSI ni pago mínimo) |
 | 5 Presupuestos | mensual por categoría, gastado/restante | ✅ |
 | 6 Flujo y proyecciones | devengado vs liquidez, proyección por obligaciones | ✅ |
-| 7 Pruebas y auditoría | 47 pruebas backend, revisión financiera, revisión de seguridad | 🟡 |
+| 7 Pruebas y auditoría | 59 pruebas backend; revisión financiera y de seguridad hechas y corregidas | 🟡 (pendientes F7, F12, F14–F16) |
 | 8 Despliegue y documentación | Docker, compose, CI, Netlify; docs | 🟡 (no desplegado) |
 
 ## Siguiente iteración (prioridad)
-1. Corregir hallazgos de la revisión financiera (ver PROGRESS.md).
+1. Hallazgos pendientes F7, F12, F14–F16 (ver PROGRESS.md).
 2. CSP estricta en Netlify/nginx; revisar `npm audit`.
 3. Pruebas E2E automatizadas con Playwright en CI.
 4. Edición de operaciones (anular + recrear en un paso) y de obligaciones/cuentas desde la UI.

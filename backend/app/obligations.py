@@ -30,7 +30,7 @@ def get(db: Session, user: User, ob_id: int, *, lock: bool = False) -> Obligatio
 
 def create(db: Session, user: User, p: s.ObligationCreate) -> Obligation:
     ob = Obligation(user_id=user.id, direction=DIRECTION.get(p.kind, "outflow"), status="pending",
-                    **p.model_dump())
+                    anchor_day=p.due_date.day, **p.model_dump())
     _validate_refs(db, user, ob)
     db.add(ob)
     db.flush()
@@ -44,6 +44,8 @@ def update(db: Session, user: User, ob_id: int, p: s.ObligationUpdate) -> Obliga
         raise ledger.LedgerError("Sólo se pueden editar obligaciones pendientes")
     for k, v in p.model_dump(exclude_unset=True).items():
         setattr(ob, k, v)
+    if p.due_date is not None:
+        ob.anchor_day = p.due_date.day
     _validate_refs(db, user, ob)
     ledger.audit(db, user, "obligation", ob.id, "update", p.model_dump(mode="json", exclude_unset=True))
     db.flush()
@@ -73,6 +75,8 @@ def _payload(ob: Obligation, p: s.ObligationSettle, when: date) -> s.BaseModel:
         principal = amount - p.interest_cents
         if principal < 0:
             raise ledger.LedgerError("El interés no puede superar el monto del pago")
+        if p.interest_cents > 0 and not (p.interest_category_id or ob.category_id):
+            raise ledger.LedgerError("Indica la categoría de gasto para los intereses")
         return s.LoanPaymentIn(kind="loan_payment", from_account_id=need(account, "Indica la cuenta de pago"),
                                loan_account_id=need(ob.target_account_id, "La obligación no tiene préstamo destino"),
                                principal_cents=principal, interest_cents=p.interest_cents,
@@ -91,14 +95,15 @@ def settle(db: Session, user: User, ob_id: int, p: s.ObligationSettle) -> tuple[
         raise ledger.Conflict("La obligación no está pendiente")
     tx, _ = ledger.record(db, user, _payload(ob, p, p.occurred_on or date.today()))
     ob.status, ob.settled_transaction_id = "paid", tx.id
-    nxt = None
-    if ob.recurrence != "none":
+    # Si ya se generó la siguiente (p. ej. se anuló el pago y se vuelve a liquidar), no se duplica.
+    nxt = db.scalar(select(Obligation).where(Obligation.generated_from_id == ob.id))
+    if ob.recurrence != "none" and nxt is None:
         months = 1 if ob.recurrence == "monthly" else 12
         nxt = Obligation(
             user_id=user.id, name=ob.name, kind=ob.kind, direction=ob.direction, amount_cents=ob.amount_cents,
-            due_date=add_months(ob.due_date, months), recurrence=ob.recurrence, status="pending",
+            due_date=add_months(ob.due_date, months, ob.anchor_day), recurrence=ob.recurrence, status="pending",
             pay_from_account_id=ob.pay_from_account_id, target_account_id=ob.target_account_id,
-            category_id=ob.category_id,
+            category_id=ob.category_id, anchor_day=ob.anchor_day or ob.due_date.day, generated_from_id=ob.id,
         )
         db.add(nxt)
     ledger.audit(db, user, "obligation", ob.id, "settle", {"transaction_id": tx.id})

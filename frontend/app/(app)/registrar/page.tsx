@@ -6,13 +6,14 @@ import { formatCents, parseToCents, parseToCentsAllowZero } from "@/lib/money";
 import { errMsg, getPref, setPref, useLoad } from "@/lib/useLoad";
 import { Btn, Card, Empty, ErrorBox, Field, Input, Loading, PageTitle, Segmented, Select, useToast } from "@/components/ui";
 
-type Mode = "expense" | "income" | "transfer" | "card_payment" | "loan_payment";
+type Mode = "expense" | "income" | "transfer" | "card_payment" | "loan_payment" | "refund";
 const MODES: { value: Mode; label: string }[] = [
   { value: "expense", label: "Gasto" },
   { value: "income", label: "Ingreso" },
   { value: "transfer", label: "Transferencia" },
   { value: "card_payment", label: "Pago de tarjeta" },
   { value: "loan_payment", label: "Pago de préstamo" },
+  { value: "refund", label: "Devolución" },
 ];
 
 function newKey(): string {
@@ -93,9 +94,9 @@ export default function Registrar() {
       return { kind: "loan_payment", ...base, description: fallback("Pago de préstamo"), from_account_id: Number(lpFrom), loan_account_id: Number(lpLoan), principal_cents: p, interest_cents: i, ...(i > 0 ? { interest_category_id: Number(lpIntCat) } : {}) };
     }
     if (cents === null) return "Monto inválido. Usa números positivos con máximo 2 decimales (ej. 1,234.50).";
-    if (mode === "expense") {
+    if (mode === "expense" || mode === "refund") {
       if (!expAcc || !expCat) return "Elige cuenta y categoría.";
-      return { kind: "expense", ...base, description: fallback(name(expCat)), account_id: Number(expAcc), category_id: Number(expCat), amount_cents: cents };
+      return { kind: mode, ...base, description: fallback(mode === "refund" ? `Devolución ${name(expCat)}` : name(expCat)), account_id: Number(expAcc), category_id: Number(expCat), amount_cents: cents };
     }
     if (mode === "income") {
       if (!incAcc || !incCat) return "Elige cuenta y categoría.";
@@ -140,7 +141,7 @@ export default function Registrar() {
   if (loadErr && !accounts) return <ErrorBox message={loadErr} onRetry={reload} />;
 
   const needs: string[] = [];
-  if (mode === "expense") { if (!payable.length) needs.push("una cuenta"); if (!expCats.length) needs.push("una categoría de gasto"); }
+  if (mode === "expense" || mode === "refund") { if (!payable.length) needs.push("una cuenta"); if (!expCats.length) needs.push("una categoría de gasto"); }
   if (mode === "income") { if (!assets.length) needs.push("una cuenta"); if (!incCats.length) needs.push("una categoría de ingreso"); }
   if (mode === "transfer" && assets.length < 1) needs.push("cuentas");
   if (mode === "card_payment") { if (!assets.length) needs.push("una cuenta de origen"); if (!cards.length) needs.push("una tarjeta"); }
@@ -162,7 +163,7 @@ export default function Registrar() {
             {mode === "loan_payment" && (
               <Field label="Interés (opcional)"><Input inputMode="decimal" placeholder="0.00" value={interest} onChange={(e) => setInterest(e.target.value)} /></Field>
             )}
-            {mode === "expense" && (<>
+            {(mode === "expense" || mode === "refund") && (<>
               <Field label="Cuenta o tarjeta">{sel(payable, expAcc, setExpAcc)}</Field>
               <Field label="Categoría">{sel(expCats, expCat, setExpCat)}</Field>
             </>)}

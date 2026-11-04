@@ -39,20 +39,35 @@ def balances(db: Session, user: User, as_of: date | None = None) -> dict[int, in
     return {aid: int(total) for aid, total in db.execute(q)}
 
 
-def accounts_with_balance(db: Session, user: User, account_class: str | None = None, include_archived=False):
+def accounts_with_balance(db: Session, user: User, account_class: str | None = None, include_archived=False,
+                          as_of: date | None = None):
     q = select(Account).where(Account.user_id == user.id).order_by(Account.account_class, Account.name)
     if account_class:
         q = q.where(Account.account_class == account_class)
     if not include_archived:
         q = q.where(Account.archived_at.is_(None))
-    bal = balances(db, user)
+    bal = balances(db, user, as_of)
     return [(a, natural(a, bal.get(a.id, 0))) for a in db.scalars(q)]
 
 
 # ------------------------------------------------------------------ tarjetas
+def due_after_closing(closing: date, statement_day: int, due_day: int) -> date:
+    """Fecha límite del estado que cierra en `closing`. Si el día de pago es mayor que el de corte, vence el
+    mismo mes (o al día siguiente del corte si el mes es corto); si no, vence el mes siguiente."""
+    if due_day > statement_day:
+        due = clamp(closing.year, closing.month, due_day)
+        return due if due > closing else closing + timedelta(days=1)
+    return add_months(closing, 1, due_day)
+
+
 def card_status(db: Session, card: Account, today: date) -> dict:
+    # Sólo cuenta lo ocurrido hasta hoy: las operaciones con fecha futura aparecen al llegar su fecha.
     owed = -int(
-        db.scalar(select(func.coalesce(func.sum(Entry.amount_cents), 0)).where(Entry.account_id == card.id))
+        db.scalar(
+            select(func.coalesce(func.sum(Entry.amount_cents), 0))
+            .join(Transaction)
+            .where(Entry.account_id == card.id, Transaction.occurred_on <= today)
+        )
     )
     out = {
         "id": card.id, "name": card.name, "owed_cents": owed, "credit_limit_cents": card.credit_limit_cents,
@@ -64,9 +79,7 @@ def card_status(db: Session, card: Account, today: date) -> dict:
     closing = clamp(today.year, today.month, card.statement_day)
     if closing > today:
         closing = add_months(closing, -1, card.statement_day)
-    due = clamp(closing.year, closing.month, card.due_day)
-    if due <= closing:
-        due = add_months(due, 1, card.due_day)
+    due = due_after_closing(closing, card.statement_day, card.due_day)
     owed_at_close = -int(
         db.scalar(
             select(func.coalesce(func.sum(Entry.amount_cents), 0))
@@ -82,19 +95,18 @@ def card_status(db: Session, card: Account, today: date) -> dict:
             .join(Transaction)
             .where(
                 Entry.account_id == card.id, Entry.amount_cents > 0, Transaction.occurred_on > closing,
-                Transaction.voided_at.is_(None), Transaction.kind != "reversal",
+                Transaction.occurred_on <= today, Transaction.voided_at.is_(None), Transaction.kind != "reversal",
             )
         )
     )
     statement_due = max(0, owed_at_close - credits_after)
-    if due >= today or statement_due > 0:
+    if statement_due > 0:
         out.update(next_due_date=due, statement_due_cents=statement_due, overdue=due < today)
     else:
+        # Estado cubierto: se muestra el siguiente ciclo, estimado con el saldo actual.
         next_close = add_months(closing, 1, card.statement_day)
-        nxt = clamp(next_close.year, next_close.month, card.due_day)
-        if nxt <= next_close:
-            nxt = add_months(nxt, 1, card.due_day)
-        out.update(next_due_date=nxt, statement_due_cents=max(0, owed))
+        out.update(next_due_date=due_after_closing(next_close, card.statement_day, card.due_day),
+                   statement_due_cents=max(0, owed))
     return out
 
 
@@ -107,6 +119,7 @@ def cards(db: Session, user: User, today: date) -> list[dict]:
 
 # ------------------------------------------------------------------ vencimientos
 def upcoming(db: Session, user: User, today: date, days: int = 30) -> list[dict]:
+    """Obligaciones pendientes (con sus repeticiones futuras dentro del horizonte) + pagos de tarjeta."""
     horizon = today + timedelta(days=days)
     items: list[dict] = []
     pending = list(
@@ -116,12 +129,21 @@ def upcoming(db: Session, user: User, today: date, days: int = 30) -> list[dict]
             .order_by(Obligation.due_date, Obligation.id)
         )
     )
+    has_child = set(db.scalars(select(Obligation.generated_from_id).where(
+        Obligation.user_id == user.id, Obligation.generated_from_id.is_not(None))))
     covered_cards = {o.target_account_id for o in pending if o.kind == "card_payment"}
     for o in pending:
-        items.append({
-            "source": "obligation", "ref_id": o.id, "name": o.name, "due_date": o.due_date,
-            "amount_cents": o.amount_cents, "direction": o.direction, "overdue": o.due_date < today,
-        })
+        when, step = o.due_date, {"monthly": 1, "yearly": 12}.get(o.recurrence)
+        n = 0
+        while when <= horizon:
+            items.append({
+                "source": "obligation", "ref_id": o.id, "name": o.name, "due_date": when,
+                "amount_cents": o.amount_cents, "direction": o.direction, "overdue": when < today,
+            })
+            if not step or o.id in has_child:  # la siguiente ya existe como obligación real
+                break
+            n += 1
+            when = add_months(o.due_date, step * n, o.anchor_day or o.due_date.day)
     for c in cards(db, user, today):
         if c["id"] in covered_cards or not c["next_due_date"] or not c["statement_due_cents"]:
             continue
@@ -131,7 +153,8 @@ def upcoming(db: Session, user: User, today: date, days: int = 30) -> list[dict]
                 "due_date": c["next_due_date"], "amount_cents": c["statement_due_cents"], "direction": "outflow",
                 "overdue": c["overdue"],
             })
-    items.sort(key=lambda i: (i["due_date"], i["source"], i["ref_id"]))
+    # Mismo día: entradas antes que salidas (evita mínimos proyectados que no ocurren).
+    items.sort(key=lambda i: (i["due_date"], i["direction"] != "inflow", i["source"], i["ref_id"]))
     return items
 
 
@@ -145,7 +168,7 @@ def available_cents(db: Session, user: User, as_of: date | None = None) -> int:
 
 
 def dashboard(db: Session, user: User, today: date) -> dict:
-    accs = accounts_with_balance(db, user)
+    accs = accounts_with_balance(db, user, as_of=today)
     available = sum(b for a, b in accs if a.subtype in LIQUID_SUBTYPES)
     assets = sum(b for a, b in accs if a.account_class == "asset")
     debt = sum(b for a, b in accs if a.account_class == "liability")
@@ -164,7 +187,10 @@ def dashboard(db: Session, user: User, today: date) -> dict:
 # ------------------------------------------------------------------ flujo de efectivo
 def cashflow(db: Session, user: User, date_from: date, date_to: date) -> dict:
     month_col = func.to_char(Transaction.occurred_on, "YYYY-MM")
-    is_liquid_real = and_(Account.subtype.in_(LIQUID_SUBTYPES), Transaction.kind != "opening_balance")
+    orig = aliased(Transaction)
+    reverses_opening = select(orig.id).where(orig.id == Transaction.reverses_id, orig.kind == "opening_balance").exists()
+    is_liquid_real = and_(Account.subtype.in_(LIQUID_SUBTYPES), Transaction.kind != "opening_balance",
+                          ~reverses_opening)
     q = (
         select(
             month_col,
@@ -210,7 +236,7 @@ def by_category(db: Session, user: User, date_from: date, date_to: date, account
 
 # ------------------------------------------------------------------ proyección
 def projection(db: Session, user: User, today: date, days: int = 90) -> dict:
-    start = available_cents(db, user)
+    start = available_cents(db, user, as_of=today)
     bal = start
     points = []
     min_bal, min_date = start, today
@@ -270,6 +296,10 @@ def integrity(db: Session, user: User) -> dict:
             .where(Transaction.user_id == user.id, Transaction.voided_at.is_not(None), rev.id.is_(None))
         )
     )
-    return {"ok": not bad and ledger_sum == 0 and not voided_without_reversal, "unbalanced_transactions": bad,
-            "voided_without_reversal": voided_without_reversal, "ledger_sum_cents": ledger_sum,
+    bal = balances(db, user)
+    archived_nonzero = [a for a in db.scalars(select(Account.id).where(
+        Account.user_id == user.id, Account.archived_at.is_not(None))) if bal.get(a, 0) != 0]
+    return {"ok": not bad and ledger_sum == 0 and not voided_without_reversal and not archived_nonzero,
+            "unbalanced_transactions": bad, "voided_without_reversal": voided_without_reversal,
+            "archived_with_balance": archived_nonzero, "ledger_sum_cents": ledger_sum,
             "checked_transactions": len(rows)}

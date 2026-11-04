@@ -151,6 +151,13 @@ def build(db: Session, user: User, p: s.BaseModel) -> tuple[str, list[tuple[Acco
         # R2: la compra con tarjeta registra el gasto Y aumenta lo adeudado en la tarjeta.
         return kind, [(a, -p.amount_cents), (c, p.amount_cents)]
 
+    if isinstance(p, s.RefundIn):
+        a = _require(acc(p.account_id), classes=("asset", "liability"), role="cuenta que recibe la devolución")
+        if a.account_class == "liability" and a.subtype != "credit_card":
+            raise LedgerError(f"«{a.name}» es un préstamo: una devolución llega a efectivo, cuenta o tarjeta")
+        c = _require(acc(p.category_id), classes=("expense",), role="categoría de gasto devuelta")
+        return "refund", [(a, p.amount_cents), (c, -p.amount_cents)]
+
     if isinstance(p, s.TransferIn):
         f = _require(acc(p.from_account_id), classes=("asset", "liability"), role="cuenta de origen")
         t = _require(acc(p.to_account_id), classes=("asset", "liability"), role="cuenta de destino")
@@ -229,6 +236,9 @@ def void(db: Session, user: User, tx_id: int, reason: str) -> Transaction:
         raise LedgerError("Una reversión no se puede anular; registra una nueva operación")
     if tx.voided_at is not None:
         raise Conflict("La operación ya estaba anulada")
+    archived = [e.account.name for e in tx.entries if e.account.archived_at is not None]
+    if archived:
+        raise LedgerError(f"No se puede anular: afecta cuentas archivadas ({', '.join(archived)})")
     lines = [(e.account, -e.amount_cents) for e in tx.entries]
     rev = post(
         db, user, kind="reversal", occurred_on=tx.occurred_on, description=f"Anulación: {tx.description}"[:500],

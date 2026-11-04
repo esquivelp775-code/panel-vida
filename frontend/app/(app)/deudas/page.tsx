@@ -35,7 +35,7 @@ function ObligationForm({ accounts, onDone }: { accounts: Account[]; onDone: () 
     if (!name.trim()) return setError("Escribe un nombre.");
     if (c === null) return setError("Monto inválido (positivo, máximo 2 decimales).");
     if (!due) return setError("Indica la fecha de vencimiento.");
-    const body: ObligationCreate = { name: name.trim(), kind, direction: inflow ? "inflow" : "outflow", amount_cents: c, due_date: due, recurrence: rec };
+    const body: ObligationCreate = { name: name.trim(), kind, amount_cents: c, due_date: due, recurrence: rec };
     if (payFrom) body.pay_from_account_id = Number(payFrom);
     if (needsTarget && target) body.target_account_id = Number(target);
     if (needsCat && cat) body.category_id = Number(cat);

@@ -49,7 +49,7 @@ def list_transactions(
     q: str | None = Query(default=None, max_length=100),
     include_voided: bool = True,
     limit: int = Query(default=50, ge=1, le=500),
-    offset: int = Query(default=0, ge=0),
+    offset: int = Query(default=0, ge=0, le=1_000_000),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):

@@ -59,7 +59,8 @@ def get_current_user(
     if creds is None:
         raise unauthorized
     try:
-        payload = jwt.decode(creds.credentials, get_settings().secret_key, algorithms=["HS256"])
+        payload = jwt.decode(creds.credentials, get_settings().secret_key, algorithms=["HS256"],
+                             options={"require": ["exp", "iat", "sub"]})
         user_id = int(payload["sub"])
     except (jwt.PyJWTError, KeyError, ValueError):
         raise unauthorized from None
@@ -69,8 +70,15 @@ def get_current_user(
     return user
 
 
+# Hash ficticio para que un email inexistente cueste lo mismo que uno real (evita enumeración por tiempo).
+DUMMY_HASH = hash_password(secrets.token_urlsafe(16))
+
+
 class LoginRateLimiter:
-    """Límite simple en memoria de intentos fallidos por email (suficiente para un usuario/1 proceso)."""
+    """Límite en memoria de intentos fallidos por clave (email|IP). Suficiente para un usuario y un proceso.
+    Usar email+IP evita que un tercero bloquee al dueño desde otra IP sólo conociendo su correo."""
+
+    MAX_KEYS = 10_000
 
     def __init__(self) -> None:
         self._fails: dict[str, list[float]] = {}
@@ -89,6 +97,9 @@ class LoginRateLimiter:
 
     def fail(self, key: str) -> None:
         with self._lock:
+            if len(self._fails) >= self.MAX_KEYS:  # tope de memoria: descarta las claves más antiguas
+                for k in list(self._fails)[: self.MAX_KEYS // 2]:
+                    del self._fails[k]
             self._fails[key] = [*self._recent(key), time.monotonic()]
 
     def reset(self, key: str | None = None) -> None:

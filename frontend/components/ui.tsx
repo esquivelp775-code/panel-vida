@@ -161,5 +161,5 @@ export const SUBTYPE_LABEL: Record<string, string> = {
 export const KIND_LABEL: Record<string, string> = {
   income: "Ingreso", expense: "Gasto", card_purchase: "Compra con tarjeta", transfer: "Transferencia",
   card_payment: "Pago de tarjeta", loan_payment: "Pago de préstamo", loan_disbursement: "Disposición de préstamo",
-  adjustment: "Ajuste", opening_balance: "Saldo inicial", reversal: "Reversión",
+  adjustment: "Ajuste", opening_balance: "Saldo inicial", reversal: "Reversión", refund: "Devolución",
 };

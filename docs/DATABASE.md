@@ -67,6 +67,10 @@ Activos, pasivos, categorías de ingreso/gasto y cuentas de capital del sistema.
 
 Índices: `(account_id)`, `(transaction_id)`; `transactions (user_id, occurred_on desc, id desc)`.
 
+### Migración 0002
+`transactions.kind` admite `refund`; `obligations.anchor_day` (día ancla de recurrencia) y
+`obligations.generated_from_id` (enlace único a la obligación que la generó).
+
 ### `obligations`, `budgets`, `audit_log`
 Ver `backend/app/models.py`. `budgets` único por `(user_id, category_id, month)`.
 

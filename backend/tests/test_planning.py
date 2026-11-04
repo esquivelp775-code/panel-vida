@@ -56,7 +56,9 @@ def test_obligation_settle_recur_and_void_reopens(api):
     up = api.c.get("/api/v1/upcoming").json()
     assert [(i["source"], i["amount_cents"]) for i in up] == [("obligation", 45_000)]
     proj = api.c.get("/api/v1/reports/projection").json()
-    assert proj["starting_available_cents"] == 100_000 and proj["min_balance_cents"] == 55_000
+    # Mensual dentro de 90 días: 3 repeticiones proyectadas (100 000 − 3 × 45 000).
+    assert proj["starting_available_cents"] == 100_000 and proj["min_balance_cents"] == -35_000
+    assert len(proj["points"]) == 3
     paid = api.c.post(f"/api/v1/obligations/{ob['id']}/settle", json={}).json()
     assert paid["status"] == "paid"
     assert api.balance(debit) == 55_000 and api.balance(services) == 45_000

@@ -22,6 +22,9 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     def validate_for_production(self) -> None:
+        # Fail-closed: fuera de development/test el secreto por defecto nunca es aceptable.
+        if self.env not in ("development", "test") and self.secret_key.startswith("dev-only"):
+            raise RuntimeError("PANEL_SECRET_KEY no definido: define un secreto propio (o PANEL_ENV=development)")
         if self.env == "production":
             if self.secret_key.startswith("dev-only") or len(self.secret_key) < 32:
                 raise RuntimeError("PANEL_SECRET_KEY debe definirse (≥32 caracteres) en producción")

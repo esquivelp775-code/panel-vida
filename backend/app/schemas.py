@@ -124,6 +124,14 @@ class CardPurchaseIn(_TxBase):
     amount_cents: Cents
 
 
+class RefundIn(_TxBase):
+    """Devolución de una compra: reduce el gasto de la categoría en la fecha de la devolución."""
+    kind: Literal["refund"]
+    account_id: Id
+    category_id: Id
+    amount_cents: Cents
+
+
 class TransferIn(_TxBase):
     kind: Literal["transfer"]
     from_account_id: Id
@@ -175,7 +183,7 @@ class AdjustmentIn(_TxBase):
 
 
 TransactionIn = Annotated[
-    IncomeIn | ExpenseIn | CardPurchaseIn | TransferIn | CardPaymentIn | LoanPaymentIn | LoanDisbursementIn
+    IncomeIn | ExpenseIn | CardPurchaseIn | RefundIn | TransferIn | CardPaymentIn | LoanPaymentIn | LoanDisbursementIn
     | AdjustmentIn,
     Field(discriminator="kind"),
 ]

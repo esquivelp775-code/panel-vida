@@ -109,6 +109,7 @@ Categorías = cuentas con `subtype` `income` o `expense` (se crean igual con `PO
 | `income` | `account_id` (activo), `category_id` (income), `amount_cents` |
 | `expense` | `account_id` (activo **o tarjeta**), `category_id` (expense), `amount_cents` → si la cuenta es tarjeta se guarda como `card_purchase` |
 | `card_purchase` | `card_account_id`, `category_id`, `amount_cents` |
+| `refund` | `account_id` (activo o tarjeta), `category_id` (expense), `amount_cents` — devolución: reduce el gasto en su fecha |
 | `transfer` | `from_account_id`, `to_account_id`, `amount_cents` → si destino es tarjeta se guarda `card_payment`; si destino es préstamo, `loan_payment` sin interés |
 | `card_payment` | `from_account_id` (activo), `card_account_id`, `amount_cents` |
 | `loan_payment` | `from_account_id`, `loan_account_id`, `principal_cents`, `interest_cents` (≥0), `interest_category_id?` (requerido si interés > 0) |
@@ -158,6 +159,6 @@ pay_from_account_id, target_account_id, category_id, settled_transaction_id, cre
 | GET | `/reports/cashflow?date_from&date_to` | `{months:[{month:"YYYY-MM", income_cents, expense_cents, net_cents, liquid_change_cents}], totals:{…}}` |
 | GET | `/reports/by-category?date_from&date_to&account_class=expense` | `[{category_id, name, total_cents}]` |
 | GET | `/reports/projection?days=90` | `{starting_available_cents, points:[{date, event, amount_cents, balance_cents}], min_balance_cents, min_balance_date}` |
-| GET | `/reports/integrity` | `{ok, unbalanced_transactions:[], ledger_sum_cents, checked_transactions}` |
+| GET | `/reports/integrity` | `{ok, unbalanced_transactions:[], voided_without_reversal:[], archived_with_balance:[], ledger_sum_cents, checked_transactions}` |
 | GET | `/export/transactions.csv?date_from&date_to` | CSV UTF‑8 |
 | GET | `/export/full.json` | respaldo completo (cuentas, transacciones, entradas, obligaciones, presupuestos) |

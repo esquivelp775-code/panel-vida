@@ -26,6 +26,8 @@ services:
       PANEL_DATABASE_URL: postgresql+psycopg://panel:${POSTGRES_PASSWORD}@db:5432/panel_vida
       PANEL_SECRET_KEY: ${PANEL_SECRET_KEY:?define PANEL_SECRET_KEY en .env}
       PANEL_CORS_ORIGINS: ${PANEL_CORS_ORIGINS:-http://localhost:8080}
+      # La API sólo es alcanzable desde la red interna (nginx), por eso se confía en sus X-Forwarded-For.
+      PANEL_FORWARDED_ALLOW_IPS: "*"
     expose:
       - "8000"
 

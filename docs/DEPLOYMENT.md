@@ -34,6 +34,6 @@ docker compose exec -T db pg_dump -Fc -U panel panel_vida > respaldos/panel_vida
 Probar la restauración periódicamente (ver MIGRATION.md).
 
 ## Verificado en esta sesión
-* API + PostgreSQL 16 locales, 47 pruebas, frontend compilado y recorrido en Chromium (360 px):
+* API + PostgreSQL 16 locales, 59 pruebas, frontend compilado y recorrido en Chromium (360 px):
   login → dashboard → registrar gasto → movimientos; integridad `ok`.
 * `docker compose config` válido. **No verificado:** construcción de imágenes (sin daemon Docker).

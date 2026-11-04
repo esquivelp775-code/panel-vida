@@ -30,6 +30,7 @@ Estas reglas son **no negociables**. Cada regla tiene una prueba automatizada as
 | Disposición de préstamo | préstamo `−X`, activo `+X` | no | no | +X |
 | Ajuste de saldo | cuenta `±X`, capital "Ajustes" `∓X` | no | no | según cuenta |
 | Saldo inicial | cuenta `±X`, capital "Saldos iniciales" `∓X` | no | no | según cuenta |
+| Devolución (refund) | activo/tarjeta `+X`, gasto `−X` | no | **reduce** el gasto en la fecha de la devolución | −X si fue a tarjeta |
 | Reversión | espejo exacto de la original | – | – | anula |
 
 Consecuencias explícitas:
@@ -52,6 +53,11 @@ Consecuencias explícitas:
 * **R10** Conciliación: `POST /accounts/{id}/reconcile` compara saldo del libro con el del estado
   de cuenta y, opcionalmente, crea un ajuste trazable por la diferencia.
 
+* **Anular vs. devolver:** anular corrige un *error de captura* y se fecha igual que el original (el
+  periodo original queda neto). Una devolución real del comercio se registra como `refund` en su propia
+  fecha, sin reescribir meses cerrados.
+* No se puede anular una operación que afecte una cuenta archivada (la cuenta quedaría con saldo oculto).
+
 ## 3. Validaciones del servidor
 
 * `amount_cents` entero, `> 0`, `≤ 1 000 000 000 000` (10 mil millones en unidades).
@@ -73,7 +79,11 @@ Consecuencias explícitas:
 * **Pago para no generar intereses (estimado)**: saldo adeudado al último corte menos pagos
   registrados después del corte, mínimo 0. Fecha: primer `due_day` posterior al corte. Si esa
   fecha ya pasó, se muestra el siguiente ciclo con el saldo actual como estimación.
-* Días 29–31 se ajustan al último día del mes.
+* Días 29–31 se ajustan al último día del mes. Si el día de pago es mayor que el de corte, vence el mismo
+  mes; si el mes es corto y ambos colapsan, vence al día siguiente del corte.
+* Si el estado ya está cubierto se muestra el **siguiente** ciclo con el saldo actual como estimación.
+* Saldos, adeudado y disponible se calculan **hasta hoy**: operaciones con fecha futura no cuentan
+  hasta su fecha.
 
 ## 5. Préstamos
 
@@ -91,9 +101,15 @@ Consecuencias explícitas:
 
 ## 7. Proyección
 
-Parte del dinero disponible de hoy y aplica, en orden de fecha, las obligaciones pendientes
-(`outflow` resta, `inflow` suma) y los pagos estimados de tarjeta dentro del horizonte. Reporta el
+Parte del dinero disponible de hoy y aplica, en orden de fecha, las obligaciones pendientes **con sus
+repeticiones mensuales/anuales dentro del horizonte** (`outflow` resta, `inflow` suma; mismo día: entradas
+primero) y el próximo pago estimado de cada tarjeta. Reporta el
 saldo mínimo proyectado y su fecha. Es una estimación: no crea transacciones.
+
+## 7b. Obligaciones recurrentes
+* Al liquidar se crea la siguiente con el **día ancla** original (31 ene → 28 feb → 31 mar).
+* Si se anula el pago, la obligación vuelve a pendiente; al volver a liquidarla **no** se duplica la
+  siguiente (enlace `generated_from_id`).
 
 ## 8. Fuera de alcance del MVP (documentado)
 
