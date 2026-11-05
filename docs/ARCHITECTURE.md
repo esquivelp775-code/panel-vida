@@ -179,3 +179,37 @@ pay_from_account_id, target_account_id, category_id, settled_transaction_id, cre
 | GET | `/reports/integrity` | `{ok, unbalanced_transactions:[], voided_without_reversal:[], archived_with_balance:[], ledger_sum_cents, checked_transactions}` |
 | GET | `/export/transactions.csv?date_from&date_to` | CSV UTF‑8 |
 | GET | `/export/full.json` | respaldo completo (cuentas, transacciones, entradas, obligaciones, presupuestos) |
+
+### Vida: pendientes, hábitos y calendario (v1, 2026-11-05)
+Los pendientes y hábitos **no son datos financieros**: se pueden editar y borrar.
+
+`Task` = `{id, title, notes, due_date|null, priority:"low"|"normal"|"high", area:"finanzas"|"personal"|"trabajo"|"casa"|"salud"|"otro", status:"pending"|"done", completed_at|null, created_at}`
+
+| Método | Ruta | Notas |
+|---|---|---|
+| GET | `/tasks?status=pending\|done` | sin `status` = todas. Orden: vencidas, por fecha (sin fecha al final), prioridad |
+| POST | `/tasks` | `{title, notes?, due_date?, priority?="normal", area?="personal"}` → 201 |
+| PATCH | `/tasks/{id}` | title, notes, due_date (null la quita), priority, area |
+| POST | `/tasks/{id}/complete` · `/tasks/{id}/reopen` | idempotentes; responden `Task` |
+| DELETE | `/tasks/{id}` | 204 |
+
+`Habit` = `{id, name, emoji, target_per_week (1–7), streak_days, done_today, week_count, last_7:[{date, done}]}`
+(`last_7` = los últimos 7 días terminando hoy, del más antiguo al más reciente; `week_count` = días hechos lunes–domingo de esta semana; racha = días consecutivos hechos terminando hoy, o ayer si hoy aún no).
+
+| Método | Ruta | Notas |
+|---|---|---|
+| GET | `/habits` | hábitos activos |
+| POST | `/habits` | `{name, emoji?="✅", target_per_week?=7}` → 201 |
+| PATCH | `/habits/{id}` | name, emoji, target_per_week |
+| POST | `/habits/{id}/toggle` | `{day?: "YYYY-MM-DD"}` (hoy por defecto; no futuro) → `Habit` actualizado |
+| DELETE | `/habits/{id}` | 204 (archiva; el historial se conserva) |
+
+`GET /calendar?month=YYYY-MM` →
+```
+{month:"2026-11", today:"2026-11-05", totals:{income_cents, expense_cents},
+ days:[{date, income_cents, expense_cents, tx_count, habits_done,
+        events:[{kind:"obligation"|"card"|"task", ref_id, title, amount_cents|null,
+                 direction:"outflow"|"inflow"|null, status:"pending"|"paid"|"done"|"overdue", priority|null}]}]}
+```
+`days` trae todos los días del mes. Eventos: vencimientos pendientes (con repeticiones) y pagos de tarjeta/MSI
+desde hoy, obligaciones pagadas del mes, y pendientes con fecha en el mes.
