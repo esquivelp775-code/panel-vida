@@ -149,7 +149,9 @@ async function json<T>(path: string, opts: Opts = {}, auth = true): Promise<T> {
 }
 
 /* ---------- Endpoints ---------- */
+export interface BulkResult { dry_run: boolean; created: { accounts: number; categories: number; obligations: number }; skipped: string[]; warnings?: string[]; errors?: string[] }
 export const api = {
+  setupBulk: (body: Record<string, unknown>) => json<BulkResult>("/setup/bulk", { method: "POST", body }),
   login: (email: string, password: string) =>
     json<{ access_token: string; token_type: string; expires_at: string }>("/auth/login", { method: "POST", body: { email, password } }, false),
   me: () => json<{ id: number; email: string; display_name: string; currency: string }>("/auth/me"),

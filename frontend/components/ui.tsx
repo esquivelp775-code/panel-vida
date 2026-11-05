@@ -32,12 +32,12 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
   return <section className={`rounded-[28px] bg-surface p-5 ring-1 ring-line ${className}`}>{children}</section>;
 }
 export function H2({ children }: { children: ReactNode }) {
-  return <h2 className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[.14em] text-muted">{children}</h2>;
+  return <h2 className="t-kicker mb-2">{children}</h2>;
 }
 export function PageTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-2">
-      <h1 className="text-3xl font-bold">{children}</h1>
+      <h1 className="t-h1">{children}</h1>
       {right}
     </div>
   );
@@ -118,7 +118,7 @@ export function Modal({ open, title, children, onClose }: { open: boolean; title
   return createPortal(
     <div className="pv-backdrop fixed inset-0 z-[70] flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true" aria-label={title} onClick={onClose}>
       <div className="pv-sheet max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-[28px] bg-surface glass-solid p-5 ring-1 ring-line sm:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
-        <h3 className="mb-3 text-lg font-bold tracking-tight">{title}</h3>
+        <h3 className="t-h2 mb-3 !text-lg">{title}</h3>
         {children}
       </div>
     </div>,
@@ -170,5 +170,5 @@ export const KIND_LABEL: Record<string, string> = {
 
 /** Cabecera de sección con kicker en versalitas y palabra itálica serif. */
 export function Kicker({ children }: { children: ReactNode }) {
-  return <p className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.14em] text-muted"><span className="h-1.5 w-1.5 rounded-full bg-accent" />{children}</p>;
+  return <p className="t-kicker mb-2 flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-accent" />{children}</p>;
 }

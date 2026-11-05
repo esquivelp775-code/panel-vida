@@ -77,7 +77,7 @@ export default function Inicio() {
     <div className="stagger space-y-4">
       <header>
         <p className="text-sm capitalize text-muted">{dateStr}</p>
-        <h1 className="text-4xl font-bold leading-tight">{greeting(now.getHours())}{firstName && <>, <span className="serif text-5xl capitalize">{firstName}</span></>}</h1>
+        <h1 className="t-h1">{greeting(now.getHours())}{firstName && <>, <span className="serif capitalize">{firstName}</span></>}</h1>
         <div className="mt-3 flex flex-wrap gap-2">
           <button className={pill} onClick={() => { setText(""); setSheet("task"); }}>+ Pendiente</button>
           <Link href="/registrar/" className={pill}>+ Gasto</Link>

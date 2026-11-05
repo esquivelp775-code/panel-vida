@@ -25,9 +25,9 @@ function DebtChart({ pts }: { pts: { month: string; remaining_cents: number }[] 
   const area = `${line} L${xy[xy.length - 1][0]},${H} L${xy[0][0]},${H} Z`;
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-32 w-full" role="img" aria-label="Deuda restante mes a mes">
-      <defs><linearGradient id="dg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#D9FF4A" stopOpacity=".45" /><stop offset="1" stopColor="#D9FF4A" stopOpacity="0" /></linearGradient></defs>
+      <defs><linearGradient id="dg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="currentColor" stopOpacity=".45" /><stop offset="1" stopColor="currentColor" stopOpacity="0" /></linearGradient></defs>
       <path d={area} fill="url(#dg)" className="pv-in" style={{ animationDelay: ".5s" }} />
-      <path d={line} fill="none" stroke="#D9FF4A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="pv-draw" style={{ ["--len" as string]: 700 }} pathLength={700} />
+      <path d={line} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="pv-draw" style={{ ["--len" as string]: 700 }} pathLength={700} />
     </svg>
   );
 }
@@ -85,7 +85,7 @@ export default function Finanzas() {
   return (
     <div className="stagger space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
       <header className="lg:col-span-2">
-        <h1 className="text-4xl font-bold">Tus <span className="serif text-5xl">finanzas</span></h1>
+        <h1 className="t-h1">Tus <span className="serif">finanzas</span></h1>
       </header>
       <ErrorBox message={dash.error} onRetry={dash.reload} />
       <Card className="lg:col-span-2">

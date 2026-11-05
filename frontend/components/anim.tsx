@@ -70,7 +70,7 @@ export function Ring({ pct, size = 44, stroke = 5, color = "var(--ink)", childre
   );
 }
 
-export const DONUT_COLORS = ["#D9FF4A", "#FF9E7A", "#6D4AFF", "#2ED3B7", "#FFD166", "#8FA8FF", "#FF7AB6", "#B8B8C8"];
+export const DONUT_COLORS = ["#FFFFFF", "#D4D4D8", "#A1A1AA", "#71717A", "#52525B", "#E4E4E7", "#8B8B93", "#3F3F46"];
 
 /** Dona animada; cada porción es un trazo con dasharray (animado por transición). */
 export function Donut({ slices, size = 140, onPick }: { slices: { id: number; label: string; value: number }[]; size?: number; onPick?: (id: number) => void }) {

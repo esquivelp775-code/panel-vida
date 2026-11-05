@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es">
       <body className="min-h-screen antialiased">
-        <div className="aurora" aria-hidden="true"><i /><i /><i /><i /></div>
+        <div className="aurora" aria-hidden="true"><i /><i /><i /><i /><b className="spot" /></div>
         <ToastProvider>{children}</ToastProvider>
         <RegisterSW />
       </body>

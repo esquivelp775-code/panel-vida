@@ -15,10 +15,11 @@ export default function Vida() {
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
     if (t === "ryventis" || t === "habits") setTab(t);
+    else if (t === "habitos") setTab("habits");
   }, []);
   return (
     <>
-      <h1 className="mb-4 text-4xl font-bold"><span className="serif text-5xl">Vida</span> diaria</h1>
+      <h1 className="t-h1 mb-4"><span className="serif">Vida</span> diaria</h1>
       <div role="tablist" className="relative mb-4 grid grid-cols-3 rounded-full bg-soft p-1">
         {([["tasks", "Pendientes"], ["habits", "Hábitos"], ["ryventis", "Ryventis"]] as const).map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`relative z-10 min-h-11 text-sm font-semibold transition-colors duration-200 ${tab === k ? "text-onaccent" : "text-muted"}`}>{l}</button>
