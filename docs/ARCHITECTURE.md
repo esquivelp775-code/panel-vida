@@ -148,6 +148,21 @@ pay_from_account_id, target_account_id, category_id, settled_transaction_id, cre
 | POST | `/obligations/{id}/cancel` | termina la obligación (y la serie) |
 | GET | `/upcoming?days=30` | obligaciones pendientes + pagos de tarjeta calculados: `[{source:"obligation"\|"card", ref_id, name, due_date, amount_cents, direction, overdue}]` |
 
+### Importación de estados de cuenta (`/imports`)
+| Método | Ruta | Cuerpo | Respuesta |
+|---|---|---|---|
+| POST | `/imports/preview` | `{account_id, csv_text, positive_is_outflow?}` | `{account_id, positive_is_outflow, rows:[{row, occurred_on, description, amount_cents, direction:"outflow"\|"inflow", fingerprint, status:"new"\|"duplicate"\|"imported", duplicate_of}], summary:{total,new,duplicates,imported}}` — no escribe nada |
+| POST | `/imports/commit` | `{account_id, rows:[{row, fingerprint, occurred_on, description, amount_cents, direction, category_id?, counter_account_id?}]}` | `{created, skipped_existing, transaction_ids}` — todo o nada |
+
+* CSV con encabezados; columnas reconocidas: Fecha · Descripción/Concepto · Monto/Importe **o** Cargo + Abono.
+  Separador `,` `;` tab o `|`. Fechas `AAAA-MM-DD` o `DD/MM/AAAA`. Montos con punto decimal; la coma sólo
+  como separador de miles.
+* `positive_is_outflow` por defecto: `true` en tarjetas (cargos positivos), `false` en cuentas.
+* Clasificación por fila: `category_id` (gasto → `expense`; ingreso en cuenta → `income`; abono en tarjeta
+  → `refund`) **o** `counter_account_id` (transferencia / pago de tarjeta).
+* `fingerprint` = clave de idempotencia (`import:<hash>`): reimportar no duplica.
+* `duplicate`: ya existe un movimiento manual de la cuenta con mismo monto y sentido a ±3 días.
+
 ### Presupuestos
 | GET | `/budgets?month=YYYY-MM` | `[{id, category_id, category_name, month, amount_cents, spent_cents, remaining_cents}]` |
 |---|---|---|
@@ -157,7 +172,7 @@ pay_from_account_id, target_account_id, category_id, settled_transaction_id, cre
 ### Reportes
 | Método | Ruta | Respuesta |
 |---|---|---|
-| GET | `/dashboard` | `{available_cents, total_debt_cents, net_worth_cents, month:{income_cents, expense_cents, net_cents}, cards:[{id,name,owed_cents,credit_limit_cents,available_credit_cents,next_due_date,statement_due_cents,overdue,deferred_cents}], upcoming:[…≤10], accounts:[Account…activos]}` |
+| GET | `/dashboard` | `{available_cents, total_debt_cents, net_worth_cents, month:{income_cents, expense_cents, net_cents}, cards:[{id,name,owed_cents,credit_limit_cents,available_credit_cents,next_due_date,statement_due_cents,minimum_due_cents,statement_closing,overdue,deferred_cents}], upcoming:[…≤10], accounts:[Account…activos]}` |
 | GET | `/reports/cashflow?date_from&date_to` | `{months:[{month:"YYYY-MM", income_cents, expense_cents, net_cents, liquid_change_cents}], totals:{…}}` |
 | GET | `/reports/by-category?date_from&date_to&account_class=expense` | `[{category_id, name, total_cents}]` |
 | GET | `/reports/projection?days=90` | `{starting_available_cents, points:[{date, event, amount_cents, balance_cents}], min_balance_cents, min_balance_date}` |

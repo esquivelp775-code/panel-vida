@@ -85,6 +85,13 @@ Consecuencias explícitas:
 * Saldos, adeudado y disponible se calculan **hasta hoy**: operaciones con fecha futura no cuentan
   hasta su fecha.
 
+### 4a. Pago mínimo (estimado)
+* Mayor entre 1.5 % del saldo revolvente del estado y 1.25 % del límite de crédito (criterio Banxico),
+  más las mensualidades MSI del periodo; nunca mayor que el pago del estado. Redondeo hacia arriba al
+  centavo con aritmética entera. **No incluye intereses ni IVA**: es una estimación; el estado del banco manda.
+* Una tarjeta sigue "vencida" mientras quede saldo sin cubrir de un estado cuya fecha límite ya pasó
+  (los pagos se aplican a la deuda más antigua).
+
 ### 4b. Meses sin intereses (MSI)
 * La compra a meses es **gasto completo y deuda completa en su fecha** (R2 no cambia): el patrimonio y el
   gasto del mes reflejan la compra entera.
@@ -113,7 +120,13 @@ Consecuencias explícitas:
 
 Parte del dinero disponible de hoy y aplica, en orden de fecha, las obligaciones pendientes **con sus
 repeticiones mensuales/anuales dentro del horizonte** (`outflow` resta, `inflow` suma; mismo día: entradas
-primero) y el próximo pago estimado de cada tarjeta. Reporta el
+primero), el próximo pago estimado de cada tarjeta y, en ciclos posteriores, **sólo las mensualidades MSI
+ya comprometidas** (no se inventa consumo futuro).
+
+## 7a. Importación
+* Montos de CSV a centavos sin floats; coma decimal ambigua se rechaza.
+* Cada fila importada es una operación normal del libro (mismas reglas R1–R10), con clave de idempotencia
+  derivada de la fila; la importación completa es atómica. Reporta el
 saldo mínimo proyectado y su fecha. Es una estimación: no crea transacciones.
 
 ## 7b. Obligaciones recurrentes

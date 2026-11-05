@@ -296,3 +296,27 @@ class BudgetOut(BaseModel):
     amount_cents: int
     spent_cents: int
     remaining_cents: int
+
+
+# ------------------------------------------------------------------ importación
+class ImportPreviewIn(Strict):
+    account_id: Id
+    csv_text: Annotated[str, StringConstraints(min_length=1, max_length=1_000_000)]
+    # None = automático: en tarjetas los montos positivos son cargos; en cuentas, los negativos son retiros.
+    positive_is_outflow: bool | None = None
+
+
+class ImportRowIn(Strict):
+    row: Annotated[int, Field(strict=True, ge=1)]
+    fingerprint: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
+    occurred_on: date
+    description: Description = ""
+    amount_cents: Cents
+    direction: Literal["outflow", "inflow"]
+    category_id: Id | None = None
+    counter_account_id: Id | None = None
+
+
+class ImportCommitIn(Strict):
+    account_id: Id
+    rows: Annotated[list[ImportRowIn], Field(min_length=1, max_length=2000)]
