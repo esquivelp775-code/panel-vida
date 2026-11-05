@@ -35,8 +35,12 @@ S7 `offset` enorme → 500. S8 HEALTHCHECK añadido. Pendientes: S6 TLS (requier
 3. **Sin revocación de tokens** antes de su expiración (12 h). Cambiar `PANEL_SECRET_KEY` invalida todos.
 4. **HTTPS**: obligatorio en producción. Netlify lo da en el frontend; el backend debe ir detrás de un
    proxy TLS (Caddy/nginx + Let's Encrypt) o túnel. No exponer el puerto 8000 directamente.
-5. `npm audit` reportó vulnerabilidades en dependencias de desarrollo del frontend: no revisadas aún.
-6. Respaldos: `pg_dump` cifrado y fuera del servidor (ver DEPLOYMENT.md). No automatizado todavía.
+5. `npm audit --omit=dev`: **0 vulnerabilidades** en lo que se publica (2026-11-05). `npm audit` completo: 8
+   moderadas sólo en herramientas de desarrollo (`minimatch` vía eslint); no llegan al sitio. Revisar al actualizar eslint.
+6. Respaldos: `deploy/backup.sh` (cifrado AES-256, verificación, retención) + timer systemd diario; probado en CI.
+   Pendiente del propietario: guardar la frase de cifrado fuera del servidor y copiar los respaldos a otro disco.
+7. Importación CSV: máx. 1 MB y 2 000 filas, cuenta validada por usuario, cada fila pasa por las reglas del
+   libro; los textos importados se neutralizan al exportar a CSV (inyección de fórmulas).
 
 ## Datos
 * Sólo datos ficticios en pruebas, seeds y documentación (`seed-demo` marca todo como "(demo)").
