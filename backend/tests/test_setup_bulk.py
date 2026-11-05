@@ -21,12 +21,13 @@ BODY = {
 def test_bulk_dry_run_then_commit_and_idempotent(api):
     c = api.c
     r = c.post("/api/v1/setup/bulk", json={**BODY, "dry_run": True}).json()
-    assert r["created"] == {"accounts": 4, "categories": 1, "obligations": 3}
+    assert r["created"] == {"accounts": 4, "categories": 1, "obligations": 3, "transactions": 0, "tasks": 0}
     assert c.get("/api/v1/accounts").json() == []  # dry_run no guarda
     r = c.post("/api/v1/setup/bulk", json={**BODY, "dry_run": False}).json()
     assert r["created"]["obligations"] == 3
     again = c.post("/api/v1/setup/bulk", json={**BODY, "dry_run": False}).json()
-    assert again["created"] == {"accounts": 0, "categories": 0, "obligations": 0} and len(again["skipped"]) == 8
+    assert again["created"] == {"accounts": 0, "categories": 0, "obligations": 0, "transactions": 0, "tasks": 0}
+    assert len(again["skipped"]) == 8
     debts = {a["name"]: a["balance_cents"] for a in c.get("/api/v1/accounts?account_class=liability").json()}
     assert debts == {"Tarjeta (demo)": 100_000, "Tanda semanal (demo)": 2_750_000}
     # Aportación a tanda = transferencia (no gasto)
@@ -44,3 +45,21 @@ def test_bulk_unknown_reference_is_422_and_nothing_saved(api):
     r = api.c.post("/api/v1/setup/bulk", json=bad)
     assert r.status_code == 422 and "No existe" in r.json()["detail"]
     assert api.c.get("/api/v1/accounts").json() == []
+
+
+def test_bulk_historic_transactions_and_tasks(api):
+    body = {"dry_run": False,
+            "accounts": [{"name": "Bolsillo histórico", "subtype": "cash", "opening_balance_cents": 5_000,
+                          "opening_date": "2026-10-01"}],
+            "categories": [{"name": "Comida", "subtype": "expense"}],
+            "transactions": [{"occurred_on": "2026-10-14", "description": "Tortitas (demo)", "amount_cents": 5_000,
+                              "account": "Bolsillo histórico", "category": "Comida"}],
+            "tasks": [{"title": "Confirmar monto (demo)", "area": "finanzas"}]}
+    r = api.c.post("/api/v1/setup/bulk", json=body).json()
+    assert r["created"]["transactions"] == 1 and r["created"]["tasks"] == 1
+    again = api.c.post("/api/v1/setup/bulk", json=body).json()
+    assert again["created"]["transactions"] == 0 and again["created"]["tasks"] == 0
+    bal = {a["name"]: a["balance_cents"] for a in api.c.get("/api/v1/accounts").json()}
+    assert bal["Bolsillo histórico"] == 0 and bal["Comida"] == 5_000
+    cf = api.c.get("/api/v1/reports/cashflow?date_from=2026-10-01&date_to=2026-10-31").json()["totals"]
+    assert cf["expense_cents"] == 5_000

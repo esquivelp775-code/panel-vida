@@ -6,7 +6,7 @@ import { formatCents } from "@/lib/money";
 import { Btn, Card, ErrorBox, H2, Muted, PageTitle, useToast } from "@/components/ui";
 
 type Row = Record<string, unknown>;
-type Setup = { accounts: Row[]; categories: Row[]; obligations: Row[] };
+type Setup = { accounts: Row[]; categories: Row[]; obligations: Row[]; transactions: Row[]; tasks: Row[] };
 
 const str = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));
 const cents = (v: unknown) => (typeof v === "number" && Number.isInteger(v) ? formatCents(v) : "");
@@ -20,7 +20,7 @@ function parse(text: string): Setup {
     if (!Array.isArray(v)) throw new Error(`"${k}" debe ser una lista.`);
     return v as Row[];
   };
-  return { accounts: arr("accounts"), categories: arr("categories"), obligations: arr("obligations") };
+  return { accounts: arr("accounts"), categories: arr("categories"), obligations: arr("obligations"), transactions: arr("transactions"), tasks: arr("tasks") };
 }
 
 function Table({ title, rows, amount }: { title: string; rows: { name: string; type: string; amount: string }[]; amount: boolean }) {
@@ -77,6 +77,8 @@ export default function CargaInicial() {
 
   const acc = (data?.accounts || []).map((a) => ({ name: str(a.name), type: str(a.subtype), amount: cents(a.opening_balance_cents) }));
   const cat = (data?.categories || []).map((a) => ({ name: str(a.name), type: str(a.subtype), amount: "" }));
+  const txs = (data?.transactions || []).map((a) => ({ name: `${str(a.occurred_on)} · ${str(a.description)}`, type: str(a.category), amount: cents(a.amount_cents) }));
+  const tks = (data?.tasks || []).map((a) => ({ name: str(a.title), type: str(a.area), amount: "" }));
   const obl = (data?.obligations || []).map((a) => ({ name: str(a.name), type: `${str(a.kind)} · ${str(a.recurrence)}`, amount: cents(a.amount_cents) }));
   const errors = check?.errors || [];
 
@@ -93,12 +95,14 @@ export default function CargaInicial() {
           <Table title="Cuentas" rows={acc} amount />
           <Table title="Categorías" rows={cat} amount={false} />
           <Table title="Pagos programados" rows={obl} amount />
+          {txs.length > 0 && <Table title="Gastos registrados" rows={txs} amount />}
+          {tks.length > 0 && <Table title="Pendientes" rows={tks} amount={false} />}
         </>
       )}
       {check && (
         <Card className="mb-4">
           <H2>{done ? "Resultado" : "Validación"}</H2>
-          <p className="text-sm">Se crearán: {check.created.accounts} cuentas, {check.created.categories} categorías, {check.created.obligations} pagos programados.</p>
+          <p className="text-sm">Se crearán: {check.created.accounts} cuentas, {check.created.categories} categorías, {check.created.obligations} pagos programados{check.created.transactions ? `, ${check.created.transactions} gastos` : ""}{check.created.tasks ? ` y ${check.created.tasks} pendientes` : ""}.</p>
           {check.skipped.length > 0 && <ul className="mt-2 list-disc pl-5 text-sm text-muted">{check.skipped.map((x, i) => <li key={i}>{x}</li>)}</ul>}
           {(check.warnings || []).length > 0 && <ul className="mt-2 list-disc pl-5 text-sm text-warn">{(check.warnings || []).map((x, i) => <li key={i}>{x}</li>)}</ul>}
           {errors.length > 0 && <ul role="alert" className="mt-2 list-disc pl-5 text-sm text-expense">{errors.map((x, i) => <li key={i}>{x}</li>)}</ul>}

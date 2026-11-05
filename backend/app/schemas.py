@@ -402,8 +402,28 @@ class SetupObligation(Strict):
     category: Name | None = None
 
 
+class SetupTransaction(Strict):
+    """Gasto histórico: sale de `account` hacia la categoría de gasto `category`."""
+    occurred_on: date
+    description: Description
+    amount_cents: Cents
+    account: Name
+    category: Name
+    notes: Notes | None = None
+
+
+class SetupTask(Strict):
+    title: Title
+    due_date: date | None = None
+    area: Area = "finanzas"
+    priority: Priority = "normal"
+    notes: Notes | None = None
+
+
 class SetupBulkIn(Strict):
     dry_run: bool = True
     accounts: Annotated[list[SetupAccount], Field(max_length=200)] = []
     categories: Annotated[list[SetupCategory], Field(max_length=200)] = []
     obligations: Annotated[list[SetupObligation], Field(max_length=1000)] = []
+    transactions: Annotated[list[SetupTransaction], Field(max_length=2000)] = []
+    tasks: Annotated[list[SetupTask], Field(max_length=500)] = []
