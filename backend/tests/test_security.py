@@ -83,3 +83,10 @@ def test_bootstrap_creates_first_user_only(monkeypatch):
         assert r.status_code == 200
     finally:
         get_settings.cache_clear()
+
+
+def test_cors_origin_trailing_slash_tolerated():
+    from app.config import Settings
+
+    s = Settings(cors_origins="https://mi-panel.netlify.app/, http://localhost:3000")
+    assert s.cors_origin_list == ["https://mi-panel.netlify.app", "http://localhost:3000"]

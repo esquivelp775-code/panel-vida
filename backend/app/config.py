@@ -32,7 +32,8 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        # Tolera la "/" final que es fácil de pegar por error (https://sitio.netlify.app/ → https://sitio.netlify.app).
+        return [o.strip().rstrip("/") for o in self.cors_origins.split(",") if o.strip().rstrip("/")]
 
     def validate_for_production(self) -> None:
         # Fail-closed: fuera de development/test el secreto por defecto nunca es aceptable.
