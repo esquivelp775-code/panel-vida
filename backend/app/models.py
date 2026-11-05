@@ -175,6 +175,7 @@ class Task(Base):
     area: Mapped[str] = mapped_column(Text, default="personal")
     status: Mapped[str] = mapped_column(Text, default="pending")
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("rv_projects.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -193,3 +194,56 @@ class HabitLog(Base):
     __tablename__ = "habit_logs"
     habit_id: Mapped[int] = mapped_column(ForeignKey("habits.id", ondelete="CASCADE"), primary_key=True)
     day: Mapped[date] = mapped_column(Date, primary_key=True)
+
+
+class RvClient(Base):
+    __tablename__ = "rv_clients"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    name: Mapped[str] = mapped_column(Text)
+    company: Mapped[str | None] = mapped_column(Text)
+    phone: Mapped[str | None] = mapped_column(Text)
+    email: Mapped[str | None] = mapped_column(Text)
+    stage: Mapped[str] = mapped_column(Text, default="nuevo")
+    source: Mapped[str | None] = mapped_column(Text)
+    notes: Mapped[str | None] = mapped_column(Text)
+    next_step: Mapped[str | None] = mapped_column(Text)
+    next_step_date: Mapped[date | None] = mapped_column(Date)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class RvInteraction(Base):
+    __tablename__ = "rv_interactions"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("rv_clients.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(Text)
+    summary: Mapped[str] = mapped_column(Text)
+    happened_on: Mapped[date] = mapped_column(Date)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class RvProject(Base):
+    __tablename__ = "rv_projects"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    client_id: Mapped[int | None] = mapped_column(ForeignKey("rv_clients.id", ondelete="RESTRICT"))
+    name: Mapped[str] = mapped_column(Text)
+    amount_cents: Mapped[int] = mapped_column(BigInteger, default=0)
+    status: Mapped[str] = mapped_column(Text, default="pendiente")
+    due_date: Mapped[date | None] = mapped_column(Date)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class RvReceivable(Base):
+    __tablename__ = "rv_receivables"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("rv_projects.id", ondelete="RESTRICT"))
+    client_id: Mapped[int | None] = mapped_column(ForeignKey("rv_clients.id", ondelete="RESTRICT"))
+    description: Mapped[str] = mapped_column(Text)
+    amount_cents: Mapped[int] = mapped_column(BigInteger)
+    due_date: Mapped[date | None] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(Text, default="por_cobrar")
+    collected_transaction_id: Mapped[int | None] = mapped_column(ForeignKey("transactions.id"), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

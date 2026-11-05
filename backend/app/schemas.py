@@ -329,6 +329,7 @@ Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, ma
 
 
 class TaskCreate(Strict):
+    project_id: Id | None = None
     title: Title
     notes: Notes | None = None
     due_date: date | None = None
@@ -337,6 +338,7 @@ class TaskCreate(Strict):
 
 
 class TaskUpdate(Strict):
+    project_id: Id | None = None
     status: Literal["pending", "doing", "done"] | None = None
     title: Title | None = None
     notes: Notes | None = None
@@ -348,6 +350,7 @@ class TaskUpdate(Strict):
 class TaskOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    project_id: int | None = None
     title: str
     notes: str | None
     due_date: date | None
@@ -427,3 +430,69 @@ class SetupBulkIn(Strict):
     obligations: Annotated[list[SetupObligation], Field(max_length=1000)] = []
     transactions: Annotated[list[SetupTransaction], Field(max_length=2000)] = []
     tasks: Annotated[list[SetupTask], Field(max_length=500)] = []
+
+
+# ------------------------------------------------------------------ ryventis
+Stage = Literal["nuevo", "charla", "propuesta", "cliente", "perdido"]
+PStatus = Literal["pendiente", "en_marcha", "terminado", "cancelado"]
+Short = Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)]
+
+
+class ClientIn(Strict):
+    name: Name
+    company: Short | None = None
+    phone: Annotated[str, StringConstraints(strip_whitespace=True, max_length=40)] | None = None
+    email: Annotated[str, StringConstraints(strip_whitespace=True, max_length=254)] | None = None
+    stage: Stage = "nuevo"
+    source: Annotated[str, StringConstraints(strip_whitespace=True, max_length=60)] | None = None
+    notes: Annotated[str, StringConstraints(max_length=4000)] | None = None
+    next_step: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
+    next_step_date: date | None = None
+
+
+class ClientPatch(ClientIn):
+    name: Name | None = None
+    stage: Stage | None = None
+
+
+class InteractionIn(Strict):
+    kind: Literal["mensaje", "llamada", "email", "reunion", "otro"]
+    summary: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+    happened_on: date | None = None
+
+
+class ProjectIn(Strict):
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=160)]
+    client_id: Id | None = None
+    amount_cents: NonNegCents = 0
+    status: PStatus = "pendiente"
+    due_date: date | None = None
+    notes: Annotated[str, StringConstraints(max_length=4000)] | None = None
+
+
+class ProjectPatch(ProjectIn):
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=160)] | None = None
+    amount_cents: NonNegCents | None = None
+    status: PStatus | None = None
+
+
+class ReceivableIn(Strict):
+    description: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    amount_cents: Cents
+    project_id: Id | None = None
+    client_id: Id | None = None
+    due_date: date | None = None
+
+
+class ReceivablePatch(Strict):
+    description: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)] | None = None
+    amount_cents: Cents | None = None
+    project_id: Id | None = None
+    client_id: Id | None = None
+    due_date: date | None = None
+
+
+class CollectIn(Strict):
+    account_id: Id
+    category_id: Id | None = None
+    occurred_on: date | None = None

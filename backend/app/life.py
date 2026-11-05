@@ -36,7 +36,17 @@ def list_tasks(db: Session, user: User, status: str | None, today: date, area: s
     return tasks
 
 
+def _check_project(db: Session, user: User, pid: int | None) -> None:
+    if pid is not None:
+        from .models import RvProject
+
+        pr = db.get(RvProject, pid)
+        if pr is None or pr.user_id != user.id:
+            raise ledger.NotFound("Proyecto no encontrado")
+
+
 def create_task(db: Session, user: User, p: s.TaskCreate) -> Task:
+    _check_project(db, user, p.project_id)
     t = Task(user_id=user.id, status="pending", **p.model_dump())
     db.add(t)
     db.flush()
@@ -46,6 +56,8 @@ def create_task(db: Session, user: User, p: s.TaskCreate) -> Task:
 def update_task(db: Session, user: User, task_id: int, p: s.TaskUpdate) -> Task:
     t = get_task(db, user, task_id)
     data = p.model_dump(exclude_unset=True)
+    if "project_id" in data:
+        _check_project(db, user, data["project_id"])
     status = data.pop("status", None)
     for k, v in data.items():
         if k in ("title", "priority", "area") and v is None:

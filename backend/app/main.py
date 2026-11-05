@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 
 from .config import get_settings
 from .ledger import LedgerError
-from .routers import accounts, auth, imports, life, planning, reports, setup, transactions
+from .routers import accounts, auth, imports, life, planning, reports, ryventis, setup, transactions
 
 settings = get_settings()
 app = FastAPI(
@@ -52,6 +52,6 @@ def health():
     return {"status": "ok"}
 
 
-for mod in (auth, accounts, transactions, planning, reports, imports, life, setup):
+for mod in (auth, accounts, transactions, planning, reports, imports, life, setup, ryventis):
     api.include_router(mod.router)
 app.include_router(api)

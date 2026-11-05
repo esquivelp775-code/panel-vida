@@ -266,6 +266,11 @@ def void(db: Session, user: User, tx_id: int, reason: str) -> Transaction:
     # Si la operación liquidaba una obligación, la obligación vuelve a quedar pendiente.
     for ob in db.scalars(select(Obligation).where(Obligation.settled_transaction_id == tx.id)):
         ob.status, ob.settled_transaction_id = "pending", None
+    # Si la operación era el cobro de Ryventis, el cobro vuelve a "por cobrar".
+    from .models import RvReceivable
+
+    for rc in db.scalars(select(RvReceivable).where(RvReceivable.collected_transaction_id == tx.id)):
+        rc.status, rc.collected_transaction_id = "por_cobrar", None
     audit(db, user, "transaction", tx.id, "void", {"reason": reason, "reversal_id": rev.id})
     db.flush()
     return rev
