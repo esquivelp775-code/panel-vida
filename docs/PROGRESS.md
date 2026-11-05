@@ -6,6 +6,15 @@
 Fases 0–7 implementadas y verificadas; CI verde en GitHub (backend, frontend y stack completo con
 Docker). Fase 8: despliegue preparado y probado en CI, **no desplegado** en un servidor real.
 
+## Carga inicial y diseño v3 (2026-11-05, cierre)
+* `POST /setup/bulk` (dry_run, idempotente) + pantalla `/carga-inicial/`; obligación `savings` (tandas =
+  ahorro, no gasto). Diseño v3 en grises con foco de luz al cursor y menú lateral agrupado.
+* Se preparó para el propietario un JSON de carga con sus datos reales (fuera del repositorio): 11 cuentas,
+  8 categorías, 40 pagos programados (fijos, tandas, tarjetas). Supuestos a confirmar por él: montos pagados a
+  INVEX/BBVA/Mercado Pago en el último periodo y si se pagó el Crédito Santander de octubre.
+* Siguiente: confirmar la carga en la app, registrar MSI vigentes (Mercado Pago, Banamex, BBVA) como planes,
+  CRM de Ryventis, notificaciones.
+
 ## Rediseño v2, Ryventis y plan de deudas (2026-11-05, cierre de sesión 1)
 * API: tablero Ryventis (área `ryventis`, estado `doing`) y `/reports/debt-plan` (meta: libre de deudas
   en mayo–junio 2027; pago mensual necesario por deuda, ritmo actual, viabilidad, proyección).
