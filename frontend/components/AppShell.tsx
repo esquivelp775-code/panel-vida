@@ -6,13 +6,14 @@ import { getToken } from "@/lib/api";
 
 const TABS = [
   { href: "/", label: "Inicio", d: "M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z" },
-  { href: "/movimientos", label: "Movimientos", d: "M4 6h16M4 12h16M4 18h10" },
+  { href: "/finanzas", label: "Finanzas", d: "M3 17l6-6 4 4 8-8M15 7h6v6" },
   { href: "/calendario", label: "Calendario", d: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4" },
   { href: "/vida", label: "Vida", d: "M12 21s-7-4.5-9-9a5 5 0 019-3 5 5 0 019 3c-2 4.5-9 9-9 9z" },
   { href: "/mas", label: "Más", d: "M5 12h.01M12 12h.01M19 12h.01" },
 ];
 /* Accesos extra sólo en la barra lateral de escritorio. */
 const EXTRA = [
+  { href: "/movimientos", label: "Movimientos", d: "M4 6h16M4 12h16M4 18h10" },
   { href: "/cuentas", label: "Cuentas", d: "M3 7h18v12H3zM3 11h18M7 15h3" },
   { href: "/deudas", label: "Deudas", d: "M12 3v18M17 7H9.5a3 3 0 000 6h5a3 3 0 010 6H6" },
   { href: "/presupuestos", label: "Presupuestos", d: "M12 3a9 9 0 109 9h-9z" },
@@ -24,7 +25,7 @@ const EXTRA = [
 function isActive(path: string, href: string, mobile = true) {
   const p = path.replace(/\/+$/, "") || "/";
   if (href === "/") return p === "/";
-  if (href === "/mas" && mobile) return ["/mas", "/cuentas", "/importar", "/deudas", "/presupuestos", "/flujo", "/exportar"].some((x) => p.startsWith(x));
+  if (href === "/finanzas" && mobile) return ["/finanzas", "/movimientos", "/cuentas", "/importar", "/deudas", "/presupuestos", "/flujo", "/exportar"].some((x) => p.startsWith(x));
   return p.startsWith(href);
 }
 const to = (h: string) => (h === "/" ? "/" : `${h}/`);
@@ -44,7 +45,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   if (!ready) return <p className="p-8 text-center text-sm text-muted">Cargando…</p>;
   const onRegister = path.startsWith("/registrar");
-  const side = [...TABS.filter((t) => t.href !== "/mas"), ...EXTRA];
+  const side = [TABS[0], TABS[1], EXTRA[0], ...TABS.slice(2, 4), ...EXTRA.slice(1), TABS[4]];
   const left = TABS.slice(0, 2), right = TABS.slice(2);
 
   const tab = (t: (typeof TABS)[number]) => {
@@ -55,31 +56,31 @@ export default function AppShell({ children }: { children: ReactNode }) {
           className={`pv-press relative flex min-h-14 flex-col items-center justify-center gap-1 transition-colors ${active ? "text-ink" : "text-muted"}`}>
           <Icon d={t.d} />
           <span className="sr-only">{t.label}</span>
-          <span aria-hidden="true" className={`h-1 w-1 rounded-full bg-ink transition-opacity duration-200 ${active ? "opacity-100" : "opacity-0"}`} />
+          <span aria-hidden="true" className={`h-1 w-1 rounded-full bg-accent transition-opacity duration-200 ${active ? "opacity-100" : "opacity-0"}`} />
         </Link>
       </li>
     );
   };
 
   return (
-    <div className="min-h-screen lg:flex">
+    <div className="relative min-h-screen lg:flex">
       {/* Barra lateral (escritorio) */}
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col p-4 lg:flex">
-        <div className="flex h-full flex-col rounded-[28px] bg-surface p-4 shadow-soft ring-1 ring-line">
-          <p className="mb-5 px-3 pt-2 text-lg font-bold tracking-tight">Panel de Vida</p>
+        <div className="flex h-full flex-col rounded-[28px] bg-surface p-4 ring-1 ring-line">
+          <p className="mb-5 px-3 pt-2 text-xl font-bold">Panel de <span className="serif text-2xl">Vida</span></p>
           <nav aria-label="Navegación lateral" className="flex-1 space-y-1 overflow-y-auto">
             {side.map((t) => {
               const active = isActive(path, t.href, false);
               return (
                 <Link key={t.href} href={to(t.href)} aria-current={active ? "page" : undefined}
-                  className={`pv-press flex min-h-11 items-center gap-3 rounded-full px-4 text-sm font-semibold transition-colors ${active ? "bg-ink text-onink" : "text-muted hover:bg-soft hover:text-ink"}`}>
+                  className={`pv-press flex min-h-11 items-center gap-3 rounded-full px-4 text-sm font-semibold transition-colors ${active ? "bg-accent text-onaccent" : "text-muted hover:bg-soft hover:text-ink"}`}>
                   <Icon d={t.d} />{t.label}
                 </Link>
               );
             })}
           </nav>
           {!onRegister && (
-            <Link href="/registrar/" className="pv-press mt-3 flex min-h-11 items-center justify-center rounded-full bg-ink px-4 text-sm font-semibold text-onink">+ Registrar</Link>
+            <Link href="/registrar/" className="pv-press mt-3 flex min-h-11 items-center justify-center rounded-full btn-accent px-4 text-sm font-semibold">+ Registrar</Link>
           )}
         </div>
       </aside>
@@ -90,12 +91,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       {/* Barra inferior (móvil) */}
       <nav aria-label="Navegación principal" className="fixed inset-x-0 bottom-0 z-20 px-3 pb-[max(.75rem,env(safe-area-inset-bottom))] lg:hidden">
-        <ul className="mx-auto flex max-w-md items-center rounded-[28px] bg-surface px-2 shadow-soft ring-1 ring-line">
+        <ul className="mx-auto flex max-w-md items-center rounded-[28px] bg-surface px-2 ring-1 ring-line">
           {left.map(tab)}
           <li className="flex w-16 justify-center">
             {!onRegister && (
               <Link href="/registrar/" aria-label="Registrar movimiento"
-                className="pv-press -mt-7 flex h-14 w-14 items-center justify-center rounded-full bg-ink text-3xl font-light leading-none text-onink shadow-soft ring-4 ring-[var(--canvas)]">
+                className="pv-press -mt-7 flex h-14 w-14 items-center justify-center rounded-full btn-accent text-3xl font-light leading-none ring-4 ring-white/10">
                 +
               </Link>
             )}

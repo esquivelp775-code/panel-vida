@@ -70,7 +70,7 @@ export function Ring({ pct, size = 44, stroke = 5, color = "var(--ink)", childre
   );
 }
 
-export const DONUT_COLORS = ["var(--ink)", "#4A4A52", "#6B6B73", "#8E8E96", "#A9A9B1", "#C2C2C9", "#D6D6DB", "#E6E6EA"];
+export const DONUT_COLORS = ["#D9FF4A", "#FF9E7A", "#6D4AFF", "#2ED3B7", "#FFD166", "#8FA8FF", "#FF7AB6", "#B8B8C8"];
 
 /** Dona animada; cada porción es un trazo con dasharray (animado por transición). */
 export function Donut({ slices, size = 140, onPick }: { slices: { id: number; label: string; value: number }[]; size?: number; onPick?: (id: number) => void }) {
@@ -108,8 +108,8 @@ export function Sheet({ open, title, onClose, children }: { open: boolean; title
   // Portal a <body>: el contenedor animado de la página crea su propio contexto de apilamiento y,
   // sin portal, la barra de navegación flotante tapaba los botones del diálogo.
   return createPortal(
-    <div className="pv-backdrop fixed inset-0 z-[70] flex items-end justify-center bg-black/40 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={title} onClick={onClose}>
-      <div className="pv-sheet max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-t-[28px] bg-surface p-5 pb-8 shadow-soft" onClick={(e) => e.stopPropagation()}>
+    <div className="pv-backdrop fixed inset-0 z-[70] flex items-end justify-center bg-black/50 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={title} onClick={onClose}>
+      <div className="pv-sheet max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-t-[28px] bg-surface glass-solid p-5 pb-8 ring-1 ring-line" onClick={(e) => e.stopPropagation()}>
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-ink/20" />
         <div className="mb-3 flex items-center justify-between"><h3 className="text-lg font-bold capitalize">{title}</h3>
           <button onClick={onClose} aria-label="Cerrar" className="min-h-11 min-w-11 text-xl text-muted">✕</button></div>

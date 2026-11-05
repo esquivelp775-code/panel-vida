@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Board from "@/components/Board";
 import { api, fmtDate, todayISO, type Area, type Habit, type Priority, type Task } from "@/lib/api";
 import { addDays } from "@/lib/calendar";
 import { AREAS, AREA_COLOR, AREA_LABEL, groupTasks } from "@/lib/tasks";
@@ -7,20 +8,24 @@ import { errMsg, useLoad } from "@/lib/useLoad";
 import { Btn, Card, Confirm, Empty, ErrorBox, Field, Input, Muted, Select, Textarea, useToast } from "@/components/ui";
 import { CheckBox, Ring, Sheet, Skeleton } from "@/components/anim";
 
-type Tab = "tasks" | "habits";
+type Tab = "tasks" | "habits" | "ryventis";
 
 export default function Vida() {
   const [tab, setTab] = useState<Tab>("tasks");
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t === "ryventis" || t === "habits") setTab(t);
+  }, []);
   return (
     <>
-      <h1 className="mb-4 text-3xl font-bold tracking-tight">Vida</h1>
-      <div role="tablist" className="relative mb-4 grid grid-cols-2 rounded-full bg-soft p-1">
-        {([["tasks", "Pendientes"], ["habits", "Hábitos"]] as const).map(([k, l]) => (
-          <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`relative z-10 min-h-11 text-sm font-semibold transition-colors duration-200 ${tab === k ? "text-onink" : "text-muted"}`}>{l}</button>
+      <h1 className="mb-4 text-4xl font-bold"><span className="serif text-5xl">Vida</span> diaria</h1>
+      <div role="tablist" className="relative mb-4 grid grid-cols-3 rounded-full bg-soft p-1">
+        {([["tasks", "Pendientes"], ["habits", "Hábitos"], ["ryventis", "Ryventis"]] as const).map(([k, l]) => (
+          <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`relative z-10 min-h-11 text-sm font-semibold transition-colors duration-200 ${tab === k ? "text-onaccent" : "text-muted"}`}>{l}</button>
         ))}
-        <span className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full bg-ink transition-transform duration-300 ease-[cubic-bezier(.22,1,.36,1)]" style={{ transform: tab === "tasks" ? "translateX(0)" : "translateX(100%)" }} />
+        <span className="absolute inset-y-1 left-1 w-[calc(33.333%-3px)] rounded-full bg-accent transition-transform duration-300 ease-[cubic-bezier(.22,1,.36,1)]" style={{ transform: `translateX(${["tasks", "habits", "ryventis"].indexOf(tab) * 100}%)` }} />
       </div>
-      <div key={tab} className="pv-page">{tab === "tasks" ? <Tasks /> : <Habits />}</div>
+      <div key={tab} className="pv-page">{tab === "tasks" ? <Tasks /> : tab === "habits" ? <Habits /> : <Board />}</div>
     </>
   );
 }
@@ -91,7 +96,7 @@ function Tasks() {
           </button>
         ))}
       </div>
-      <form onSubmit={add} className="mb-4 rounded-[28px] bg-surface p-4 shadow-soft ring-1 ring-line">
+      <form onSubmit={add} className="mb-4 rounded-[28px] bg-surface p-4 ring-1 ring-line">
         <div className="flex gap-2">
           <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nuevo pendiente…" maxLength={200} aria-label="Título del pendiente" />
           <Btn type="submit" disabled={busy || !title.trim()}>Añadir</Btn>
@@ -217,7 +222,7 @@ function Habits() {
   return (
     <>
       {open ? (
-        <form onSubmit={add} className="mb-4 rounded-[28px] bg-surface p-4 shadow-soft ring-1 ring-line">
+        <form onSubmit={add} className="mb-4 rounded-[28px] bg-surface p-4 ring-1 ring-line">
           <Field label="Nombre del hábito"><Input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} autoFocus /></Field>
           <p className="mb-1 text-sm font-medium">Emoji</p>
           <div className="mb-3 grid grid-cols-8 gap-1">

@@ -2,7 +2,7 @@
  * Cachea SOLO el shell estático (HTML/JS/CSS/íconos del mismo origen).
  * Nunca toca /api ni peticiones a otros orígenes (la API), nunca cachea
  * respuestas con datos y nunca encola escrituras sin conexión. */
-const CACHE = "panel-vida-shell-v1";
+const CACHE = "panel-vida-shell-v2";
 const PRECACHE = ["/", "/login/", "/manifest.webmanifest", "/icon.svg", "/icon-192.png"];
 
 self.addEventListener("install", (event) => {

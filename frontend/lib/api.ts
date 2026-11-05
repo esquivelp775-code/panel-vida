@@ -85,9 +85,11 @@ export interface Projection {
   min_balance_cents: number; min_balance_date: string | null;
 }
 
+export interface DebtPlanDebt { account_id: number; name: string; subtype: string; owed_cents: number; monthly_needed_cents: number; scheduled_monthly_cents: number; projected_payoff_month: string | null; on_track: boolean }
+export interface DebtPlan { target_month: string; months_left: number; total_owed_cents: number; total_monthly_needed_cents: number; avg_monthly_net_cents: number; feasible: boolean; debts: DebtPlanDebt[]; projection: { month: string; remaining_cents: number }[] }
 export type Priority = "low" | "normal" | "high";
-export type Area = "finanzas" | "personal" | "trabajo" | "casa" | "salud" | "otro";
-export interface Task { id: number; title: string; notes: string | null; due_date: string | null; priority: Priority; area: Area; status: "pending" | "done"; completed_at: string | null; created_at: string }
+export type Area = "finanzas" | "personal" | "trabajo" | "casa" | "salud" | "ryventis" | "otro";
+export interface Task { id: number; title: string; notes: string | null; due_date: string | null; priority: Priority; area: Area; status: "pending" | "doing" | "done"; completed_at: string | null; created_at: string }
 export interface TaskCreate { title: string; notes?: string; due_date?: string | null; priority?: Priority; area?: Area }
 export interface Habit { id: number; name: string; emoji: string; target_per_week: number; streak_days: number; done_today: boolean; week_count: number; last_7: { date: string; done: boolean }[] }
 export interface CalEvent { kind: "obligation" | "card" | "task"; ref_id: number; title: string; amount_cents: number | null; direction: "outflow" | "inflow" | null; status: "pending" | "paid" | "done" | "overdue"; priority: Priority | null }
@@ -179,7 +181,10 @@ export const api = {
     json<import("./importer").PreviewResult>("/imports/preview", { method: "POST", body: { account_id, csv_text, ...(positive_is_outflow === undefined ? {} : { positive_is_outflow }) } }),
   importCommit: (account_id: number, rows: import("./importer").CommitRow[]) =>
     json<import("./importer").CommitResult>("/imports/commit", { method: "POST", body: { account_id, rows } }),
-  tasks: (status?: "pending" | "done") => json<Task[]>("/tasks", { query: { status } }),
+  tasks: (status?: "pending" | "done", area?: string) => json<Task[]>("/tasks", { query: { status, area } }),
+  startTask: (id: number) => json<Task>(`/tasks/${id}/start`, { method: "POST" }),
+  setTaskStatus: (id: number, status: "pending" | "doing" | "done") => json<Task>(`/tasks/${id}`, { method: "PATCH", body: { status } }),
+  debtPlan: (target?: string) => json<DebtPlan>("/reports/debt-plan", { query: { target } }),
   createTask: (b: TaskCreate) => json<Task>("/tasks", { method: "POST", body: b }),
   updateTask: (id: number, b: Partial<TaskCreate>) => json<Task>(`/tasks/${id}`, { method: "PATCH", body: b }),
   completeTask: (id: number) => json<Task>(`/tasks/${id}/complete`, { method: "POST" }),
