@@ -57,8 +57,9 @@ export default function Inicio() {
                 </>
               )}
               {c.next_due_date && (
-                <Muted>Próximo pago: {fmtDate(c.next_due_date)}{c.statement_due_cents != null ? ` · ${formatCents(c.statement_due_cents)}` : ""}</Muted>
+                <Muted>Próximo pago: {fmtDate(c.next_due_date)}{c.statement_due_cents != null ? ` · para no generar intereses ${formatCents(c.statement_due_cents)}` : ""}</Muted>
               )}
+              {(c.minimum_due_cents ?? 0) > 0 && <p className="text-xs text-slate-500" title="Estimación: no incluye intereses ni IVA">Pago mínimo (estimado) {formatCents(c.minimum_due_cents ?? 0)} · Estimación: no incluye intereses ni IVA</p>}
               {(c.deferred_cents ?? 0) > 0 && <Muted>MSI por facturar {formatCents(c.deferred_cents ?? 0)}</Muted>}
             </Card>
           ))}
@@ -70,7 +71,7 @@ export default function Inicio() {
         <Card className="mb-3">
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {d.upcoming.map((u, i) => (
-              <li key={`${u.source}-${u.ref_id}-${i}`} className="flex items-center justify-between py-2">
+              <li key={`${u.source}-${u.ref_id}-${u.due_date}-${i}`} className="flex items-center justify-between py-2">
                 <div>
                   <p className="text-sm font-medium">{u.name}</p>
                   <p className={`text-xs ${u.overdue ? "font-semibold text-red-600" : "text-slate-500"}`}>{u.overdue ? "Vencido · " : ""}{fmtDate(u.due_date)}</p>

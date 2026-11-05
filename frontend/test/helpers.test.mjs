@@ -46,3 +46,28 @@ test("prefill: tipos no corregibles o asientos raros devuelven null", () => {
   assert.equal(prefillFromEntries("expense", [E(9, "expense", 100), E(1, "asset", -50), E(2, "asset", -50)]), null);
   assert.equal(prefillFromEntries("income", [E(1, "asset", 100), E(2, "asset", -100)]), null);
 });
+
+import { normalizeDesc, descKey, buildCommitRows, applyCategoryBulk, initialState } from "../lib/importer.ts";
+
+test("importar: normalización de descripción", () => {
+  assert.equal(normalizeDesc("  CAFÉ  Ñandú #123 "), "cafe nandu 123");
+  assert.equal(descKey("***"), null);
+  assert.equal(descKey("Oxxo"), "imp_desc_oxxo");
+});
+
+test("importar: filas de commit y relleno masivo", () => {
+  const mk = (row, direction, status = "new") => ({ row, occurred_on: "2026-01-0" + row, description: "d" + row, amount_cents: 100 * row, direction, fingerprint: "import:" + row, status, duplicate_of: null });
+  const rows = [mk(1, "outflow"), mk(2, "inflow"), mk(3, "outflow", "duplicate"), mk(4, "outflow", "imported")];
+  let st = Object.fromEntries(rows.map((r) => [r.row, initialState(r)]));
+  assert.equal(st[3].selected, false);
+  assert.equal(st[4].selected, false);
+  assert.match(buildCommitRows(rows, st).error, /fila 1/);
+  st = applyCategoryBulk(rows, st, "outflow", "7");
+  assert.equal(st[2].categoryId, "");
+  assert.equal(st[3].categoryId, ""); // no seleccionada: no se toca
+  st[2] = { ...st[2], mode: "transfer", counterId: "9" };
+  const r = buildCommitRows(rows, st);
+  assert.equal(r.error, null);
+  assert.deepEqual(r.rows.map((x) => [x.row, x.category_id, x.counter_account_id]), [[1, 7, undefined], [2, undefined, 9]]);
+  assert.equal(initialState(rows[0], "12").categoryId, "12");
+});

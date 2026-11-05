@@ -71,7 +71,7 @@ export interface UpcomingItem { source: "obligation" | "card"; ref_id: number; n
 
 export interface Budget { id: number; category_id: number; category_name: string; month: string; amount_cents: number; spent_cents: number; remaining_cents: number }
 
-export interface CardSummary { id: number; name: string; owed_cents: number; credit_limit_cents: number | null; available_credit_cents: number | null; next_due_date: string | null; statement_due_cents: number | null; overdue?: boolean; deferred_cents?: number }
+export interface CardSummary { id: number; name: string; owed_cents: number; credit_limit_cents: number | null; available_credit_cents: number | null; next_due_date: string | null; statement_due_cents: number | null; overdue?: boolean; deferred_cents?: number; minimum_due_cents?: number | null; statement_closing?: string | null }
 export interface Dashboard {
   available_cents: number; total_debt_cents: number; net_worth_cents: number;
   month: { income_cents: number; expense_cents: number; net_cents: number };
@@ -166,6 +166,10 @@ export const api = {
   updateObligation: (id: number, b: ObligationUpdate) => json<Obligation>(`/obligations/${id}`, { method: "PATCH", body: b }),
   skipObligation: (id: number) => json<Obligation>(`/obligations/${id}/skip`, { method: "POST" }),
   cancelObligation: (id: number) => json<Obligation>(`/obligations/${id}/cancel`, { method: "POST" }),
+  importPreview: (account_id: number, csv_text: string, positive_is_outflow?: boolean) =>
+    json<import("./importer").PreviewResult>("/imports/preview", { method: "POST", body: { account_id, csv_text, ...(positive_is_outflow === undefined ? {} : { positive_is_outflow }) } }),
+  importCommit: (account_id: number, rows: import("./importer").CommitRow[]) =>
+    json<import("./importer").CommitResult>("/imports/commit", { method: "POST", body: { account_id, rows } }),
   upcoming: (days = 30) => json<UpcomingItem[]>("/upcoming", { query: { days } }),
 
   budgets: (month: string) => json<Budget[]>("/budgets", { query: { month } }),

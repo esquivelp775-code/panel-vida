@@ -147,6 +147,8 @@ export default function Deudas() {
                   <div className="min-w-0">
                     <p className="text-sm font-medium">{a.name}{ci?.overdue && <span className="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">Vencido</span>}</p>
                     <p className="text-xs text-slate-500">{SUBTYPE_LABEL[a.subtype]}</p>
+                    {ci?.statement_due_cents != null && <p className="text-xs text-slate-500">Pago para no generar intereses {formatCents(ci.statement_due_cents)}</p>}
+                    {(ci?.minimum_due_cents ?? 0) > 0 && <p className="text-xs text-slate-500" title="Estimación: no incluye intereses ni IVA">Pago mínimo (estimado) {formatCents(ci?.minimum_due_cents ?? 0)} · Estimación: no incluye intereses ni IVA</p>}
                     {(ci?.deferred_cents ?? 0) > 0 && <p className="text-xs text-slate-500">MSI por facturar {formatCents(ci?.deferred_cents ?? 0)}</p>}
                   </div>
                   <p className="shrink-0 font-semibold"><Money cents={a.balance_cents} /></p>
@@ -162,7 +164,7 @@ export default function Deudas() {
         <Card className="mb-4">
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {up.data.map((u, i) => (
-              <li key={`${u.source}-${u.ref_id}-${i}`} className="flex items-center justify-between py-2">
+              <li key={`${u.source}-${u.ref_id}-${u.due_date}-${i}`} className="flex items-center justify-between py-2">
                 <div>
                   <p className="text-sm font-medium">{u.name}{u.source === "card" ? " (tarjeta)" : ""}</p>
                   <p className={`text-xs ${u.overdue ? "font-semibold text-red-600" : "text-slate-500"}`}>{u.overdue ? "Vencido · " : ""}{fmtDate(u.due_date)}</p>

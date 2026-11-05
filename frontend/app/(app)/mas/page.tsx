@@ -8,6 +8,7 @@ const ITEMS = [
   { href: "/deudas/", t: "Deudas y vencimientos", d: "Lo que debes y lo que viene" },
   { href: "/presupuestos/", t: "Presupuestos", d: "Gasto del mes por categoría" },
   { href: "/flujo/", t: "Flujo de efectivo", d: "Meses, proyección y categorías" },
+  { href: "/importar/", t: "Importar estado de cuenta", d: "Carga un CSV del banco y clasifícalo" },
   { href: "/exportar/", t: "Exportar y respaldo", d: "CSV y copia completa JSON" },
 ];
 export default function Mas() {

@@ -118,6 +118,7 @@ function Detail() {
         )}
         <div className="mt-2 flex items-center gap-4">
           <Link href={`/movimientos/?account=${a.id}`} className="text-sm font-semibold text-emerald-700 underline dark:text-emerald-400">Ver movimientos</Link>
+          {reconcilable && !a.archived_at && <Link href={`/importar/?account=${a.id}`} className="text-sm font-semibold text-emerald-700 underline dark:text-emerald-400">Importar estado</Link>}
           {!a.archived_at && !a.is_system && <button type="button" onClick={() => setEditOpen(true)} className="min-h-11 text-sm font-semibold text-emerald-700 underline dark:text-emerald-400">Editar</button>}
         </div>
       </Card>
