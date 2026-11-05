@@ -1,4 +1,5 @@
 from functools import lru_cache
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,6 +17,8 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     login_max_attempts: int = 5
     login_window_seconds: int = 300
+    # Zona horaria del usuario: define qué día es "hoy" (vencimientos, mes en curso, hábitos). Vacío = la del sistema.
+    timezone: str = "America/Mexico_City"
     # Alta del primer usuario sin terminal (p. ej. Render gratuito): sólo actúa si NO existe ningún usuario.
     bootstrap_email: str | None = None
     bootstrap_password: str | None = None
@@ -28,6 +31,17 @@ class Settings(BaseSettings):
         for prefix in ("postgres://", "postgresql://"):
             if v.startswith(prefix):
                 return "postgresql+psycopg://" + v[len(prefix):]
+        return v
+
+    @field_validator("timezone")
+    @classmethod
+    def _known_timezone(cls, v: str) -> str:
+        v = v.strip()
+        if v:
+            try:
+                ZoneInfo(v)
+            except (ZoneInfoNotFoundError, ValueError):
+                raise ValueError(f"PANEL_TIMEZONE no reconocida: {v}") from None
         return v
 
     @property

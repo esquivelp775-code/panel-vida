@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import ledger
+from .. import dates, ledger
 from .. import obligations as obs
 from .. import reports as r
 from .. import schemas as s
@@ -71,7 +71,7 @@ def cancel_obligation(ob_id: int, db: Session = Depends(get_db), user: User = De
 @router.get("/upcoming", response_model=list[s.UpcomingItem])
 def upcoming(days: int = Query(default=30, ge=1, le=366), db: Session = Depends(get_db),
              user: User = Depends(get_current_user)):
-    return r.upcoming(db, user, date.today(), days)
+    return r.upcoming(db, user, dates.today(), days)
 
 
 def _month(m: str) -> date:

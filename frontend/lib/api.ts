@@ -59,7 +59,7 @@ export interface TxList { items: Transaction[]; total: number }
 export interface TxFilters { account_id?: string; kind?: string; date_from?: string; date_to?: string; q?: string; include_voided?: boolean; limit?: number; offset?: number }
 
 export interface Obligation {
-  id: number; name: string; kind: "bill" | "loan_installment" | "card_payment" | "income_expected" | "other";
+  id: number; name: string; kind: "bill" | "loan_installment" | "card_payment" | "income_expected" | "other" | "savings";
   direction: "outflow" | "inflow"; amount_cents: number; due_date: string; recurrence: "none" | "monthly" | "yearly";
   status: "pending" | "paid" | "cancelled"; pay_from_account_id: number | null; target_account_id: number | null;
   category_id: number | null; settled_transaction_id: number | null; created_at: string;
@@ -85,7 +85,7 @@ export interface Projection {
   min_balance_cents: number; min_balance_date: string | null;
 }
 
-export interface DebtPlanDebt { account_id: number; name: string; subtype: string; owed_cents: number; monthly_needed_cents: number; scheduled_monthly_cents: number; projected_payoff_month: string | null; on_track: boolean }
+export interface DebtPlanDebt { account_id: number; name: string; subtype: string; owed_cents: number; monthly_needed_cents: number; scheduled_monthly_cents: number; scheduled_once_cents: number; projected_payoff_month: string | null; on_track: boolean }
 export interface DebtPlan { target_month: string; months_left: number; total_owed_cents: number; total_monthly_needed_cents: number; avg_monthly_net_cents: number; feasible: boolean; debts: DebtPlanDebt[]; projection: { month: string; remaining_cents: number }[] }
 export type Priority = "low" | "normal" | "high";
 export type Area = "finanzas" | "personal" | "trabajo" | "casa" | "salud" | "ryventis" | "otro";
@@ -181,12 +181,20 @@ export interface RyventisSummary {
 }
 
 /* ---------- Endpoints ---------- */
+export interface Me { id: number; email: string; display_name: string | null; currency: string }
+export interface TokenResult { access_token: string; token_type: string; expires_at: string }
+export interface IntegrityReport { ok: boolean; checked_transactions: number; unbalanced_transactions: number[]; voided_without_reversal: number[]; reversals_not_mirrored: number[]; archived_with_balance: number[] }
 export interface BulkResult { dry_run: boolean; created: { accounts: number; categories: number; obligations: number; transactions?: number; tasks?: number }; skipped: string[]; warnings?: string[]; errors?: string[] }
 export const api = {
   setupBulk: (body: Record<string, unknown>) => json<BulkResult>("/setup/bulk", { method: "POST", body }),
   login: (email: string, password: string) =>
     json<{ access_token: string; token_type: string; expires_at: string }>("/auth/login", { method: "POST", body: { email, password } }, false),
-  me: () => json<{ id: number; email: string; display_name: string; currency: string }>("/auth/me"),
+  me: () => json<Me>("/auth/me"),
+  updateMe: (display_name: string | null) => json<Me>("/auth/me", { method: "PATCH", body: { display_name } }),
+  changePassword: (current_password: string, new_password: string) =>
+    json<TokenResult>("/auth/change-password", { method: "POST", body: { current_password, new_password } }),
+  logoutAll: () => json<TokenResult>("/auth/logout-all", { method: "POST" }),
+  integrity: () => json<IntegrityReport>("/reports/integrity"),
 
   accounts: (account_class?: AccountClass, include_archived = false) =>
     json<Account[]>("/accounts", { query: { account_class, include_archived } }),
@@ -206,7 +214,7 @@ export const api = {
 
   obligations: (status?: string) => json<Obligation[]>("/obligations", { query: { status } }),
   createObligation: (b: ObligationCreate) => json<Obligation>("/obligations", { method: "POST", body: b }),
-  settleObligation: (id: number, b: { account_id?: number; amount_cents?: number; occurred_on?: string }) =>
+  settleObligation: (id: number, b: { account_id?: number; amount_cents?: number; occurred_on?: string; interest_cents?: number; interest_category_id?: number }) =>
     json<Obligation>(`/obligations/${id}/settle`, { method: "POST", body: b }),
   updateObligation: (id: number, b: ObligationUpdate) => json<Obligation>(`/obligations/${id}`, { method: "PATCH", body: b }),
   skipObligation: (id: number) => json<Obligation>(`/obligations/${id}/skip`, { method: "POST" }),

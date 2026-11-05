@@ -6,6 +6,7 @@ os.environ.setdefault(
     os.environ.get("PANEL_TEST_DATABASE_URL", "postgresql+psycopg://panel:panel_dev_only@localhost:5432/panel_vida_test"),
 )
 os.environ["PANEL_ENV"] = "test"
+os.environ["PANEL_TIMEZONE"] = ""  # las pruebas calculan fechas con date.today(): misma fecha que la API
 os.environ.setdefault("PANEL_SECRET_KEY", "test-secret-key-not-for-production-0123456789")
 
 from datetime import date  # noqa: E402

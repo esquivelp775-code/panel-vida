@@ -45,7 +45,7 @@ function AccountForm({ onDone }: { onDone: () => void }) {
       const d = dayOk(dueDay); if (d === null) return setError("Día de pago: número de 1 a 31.");
       body.credit_limit_cents = l; body.statement_day = s; body.due_day = d;
     }
-    if (subtype === "loan" && rate.trim() !== "") {
+    if ((subtype === "loan" || isCard) && rate.trim() !== "") {
       const r = parseToCents(rate); // "12.5" -> 1250 puntos base, sin floats
       if (r === null) return setError("Tasa inválida.");
       body.interest_rate_bps = r;
@@ -71,7 +71,7 @@ function AccountForm({ onDone }: { onDone: () => void }) {
           <Field label="Día de pago"><Input inputMode="numeric" value={dueDay} onChange={(e) => setDueDay(e.target.value)} /></Field>
         </div>
       </>)}
-      {subtype === "loan" && <Field label="Tasa anual % (opcional)"><Input inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} /></Field>}
+      {(subtype === "loan" || isCard) && <Field label="Tasa anual % (opcional)"><Input inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} /></Field>}
       <Field label={isLiab ? "Saldo adeudado inicial (opcional)" : "Saldo inicial (opcional)"}><Input inputMode="decimal" value={opening} onChange={(e) => setOpening(e.target.value)} /></Field>
       {opening.trim() !== "" && <Field label="Fecha del saldo inicial"><Input type="date" value={openDate} onChange={(e) => setOpenDate(e.target.value)} /></Field>}
       <div className="flex gap-2">

@@ -40,11 +40,11 @@ def verify_password(password: str, stored: str) -> bool:
         return False
 
 
-def create_token(user_id: int) -> tuple[str, datetime]:
+def create_token(user_id: int, version: int = 0) -> tuple[str, datetime]:
     s = get_settings()
     expires = datetime.now(UTC) + timedelta(minutes=s.token_ttl_minutes)
-    token = jwt.encode({"sub": str(user_id), "exp": expires, "iat": datetime.now(UTC)}, s.secret_key, "HS256")
-    return token, expires
+    claims = {"sub": str(user_id), "exp": expires, "iat": datetime.now(UTC), "tv": version}
+    return jwt.encode(claims, s.secret_key, "HS256"), expires
 
 
 _bearer = HTTPBearer(auto_error=False)
@@ -65,7 +65,8 @@ def get_current_user(
     except (jwt.PyJWTError, KeyError, ValueError):
         raise unauthorized from None
     user = db.get(User, user_id)
-    if user is None:
+    # Los tokens emitidos antes de existir la versión no traen "tv": equivalen a la versión 0.
+    if user is None or payload.get("tv", 0) != user.token_version:
         raise unauthorized
     return user
 
@@ -89,11 +90,11 @@ class LoginRateLimiter:
         now = time.monotonic()
         return [t for t in self._fails.get(key, []) if now - t < window]
 
-    def blocked(self, key: str) -> bool:
+    def blocked(self, key: str, factor: int = 1) -> bool:
         with self._lock:
             recent = self._recent(key)
             self._fails[key] = recent
-            return len(recent) >= get_settings().login_max_attempts
+            return len(recent) >= get_settings().login_max_attempts * factor
 
     def fail(self, key: str) -> None:
         with self._lock:

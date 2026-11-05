@@ -12,6 +12,7 @@ from datetime import UTC, date, datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from . import dates
 from . import schemas as s
 from .installments import billed_count, first_closing
 from .models import SUBTYPE_CLASS, Account, AuditLog, Entry, InstallmentPlan, Obligation, Transaction, User
@@ -307,7 +308,7 @@ def create_account(db: Session, user: User, p: s.AccountCreate) -> Account:
         raw = NATURAL_SIGN[cls] * p.opening_balance_cents
         eq = system_equity(db, user, OPENING_EQUITY)
         post(
-            db, user, kind="opening_balance", occurred_on=p.opening_date or date.today(),
+            db, user, kind="opening_balance", occurred_on=p.opening_date or dates.today(),
             description=f"Saldo inicial {acc.name}", lines=[(acc, raw), (eq, -raw)],
         )
     return acc
@@ -336,7 +337,7 @@ def _has_open_plans(db: Session, card: Account) -> bool:
         .join(Transaction, Transaction.id == InstallmentPlan.transaction_id)
         .where(InstallmentPlan.card_account_id == card.id, Transaction.voided_at.is_(None))
     ).all()
-    return any(billed_count(first, months, card.statement_day, date.today()) < months for months, first in rows)
+    return any(billed_count(first, months, card.statement_day, dates.today()) < months for months, first in rows)
 
 
 def archive_account(db: Session, user: User, account_id: int) -> Account:

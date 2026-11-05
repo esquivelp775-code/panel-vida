@@ -16,6 +16,12 @@ export function isNavItemActive(path: string, tab: string | null, href: string):
   return want ? tab === want : !tab || tab === defaultTab;
 }
 
+/** ¿La página actual pertenece a este grupo? Sirve para no esconder el elemento activo en un grupo plegado. */
+export function groupHasPath(group: NavGroup, path: string): boolean {
+  const current = trimPath(path);
+  return group.items.some((i) => !i.action && trimPath(i.href.split("?")[0]) === current);
+}
+
 export const NAV_GROUPS: NavGroup[] = [
   { id: "inicio", label: "Inicio", open: true, items: [
     { href: "/", label: "Hoy", d: "M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z" },
@@ -43,7 +49,8 @@ export const NAV_GROUPS: NavGroup[] = [
     { href: "/ryventis/?tab=cobros", label: "Cobros", d: "M12 3v18M17 7H9.5a3 3 0 000 6h5a3 3 0 010 6H6" },
     { href: "/ryventis/?tab=pendientes", label: "Pendientes", d: "M5 12l4 4 10-10" },
   ] },
-  { id: "otros", label: "Otros", open: false, items: [
+  { id: "otros", label: "Otros", open: true, items: [
+    { href: "/configuracion/", label: "Configuración", d: "M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-2.9 1.2V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-2.9-1.2l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00-1.2-2.9H3a2 2 0 110-4h.1a1.7 1.7 0 001.2-2.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 002.9 1.2l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" },
     { href: "#logout", label: "Cerrar sesión", d: "M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10", action: "logout" },
   ] },
 ];

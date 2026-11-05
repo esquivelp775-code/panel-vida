@@ -79,6 +79,9 @@ Fechas `YYYY-MM-DD`. Montos: enteros en centavos, siempre **positivos** en la en
 | GET | `/health` | – | `{"status":"ok"}` |
 | POST | `/auth/login` | `{email, password}` | `{access_token, token_type:"bearer", expires_at}` |
 | GET | `/auth/me` | – | `{id, email, display_name, currency}` |
+| PATCH | `/auth/me` | `{display_name}` | `{id, email, display_name, currency}` |
+| POST | `/auth/change-password` | `{current_password, new_password}` (≥10 caracteres) | `{access_token, token_type, expires_at}`; invalida las demás sesiones |
+| POST | `/auth/logout-all` | – | `{access_token, token_type, expires_at}`; invalida las demás sesiones |
 
 ### Cuentas (`/accounts`)
 `Account` = `{id, name, account_class, subtype, currency, credit_limit_cents, statement_day,
@@ -178,7 +181,7 @@ pay_from_account_id, target_account_id, category_id, settled_transaction_id, cre
 | GET | `/reports/projection?days=90` | `{starting_available_cents, points:[{date, event, amount_cents, balance_cents}], min_balance_cents, min_balance_date}` |
 | GET | `/reports/integrity` | `{ok, unbalanced_transactions:[], voided_without_reversal:[], archived_with_balance:[], ledger_sum_cents, checked_transactions}` |
 | GET | `/export/transactions.csv?date_from&date_to` | CSV UTF‑8 |
-| GET | `/export/full.json` | respaldo completo (cuentas, transacciones, entradas, obligaciones, presupuestos) |
+| GET | `/export/full.json` | respaldo completo, versión 2 (cuentas, transacciones, entradas, obligaciones, presupuestos, MSI, pendientes, hábitos, Ryventis y bitácora) |
 
 ### Vida: pendientes, hábitos y calendario (v1, 2026-11-05)
 Los pendientes y hábitos **no son datos financieros**: se pueden editar y borrar.

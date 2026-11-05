@@ -180,11 +180,12 @@ def month_calendar(db: Session, user: User, month: date, today: date) -> dict:
         if d in days:
             days[d]["events"].append(ev)
 
-    if last >= today:  # vencimientos y tarjetas (sólo desde hoy; lo vencido se muestra en su fecha)
-        for it in r.upcoming(db, user, today, (last - today).days):
-            add(it["due_date"], {"kind": "card" if it["source"] == "card" else "obligation", "ref_id": it["ref_id"],
-                                 "title": it["name"], "amount_cents": it["amount_cents"], "direction": it["direction"],
-                                 "status": "overdue" if it["overdue"] else "pending", "priority": None})
+    # Vencimientos y tarjetas: lo pendiente hasta el fin del mes; lo vencido se muestra en su fecha, también en
+    # meses pasados (ahí el horizonte es hoy y `add` descarta lo que no caiga en el mes consultado).
+    for it in r.upcoming(db, user, today, max(0, (last - today).days)):
+        add(it["due_date"], {"kind": "card" if it["source"] == "card" else "obligation", "ref_id": it["ref_id"],
+                             "title": it["name"], "amount_cents": it["amount_cents"], "direction": it["direction"],
+                             "status": "overdue" if it["overdue"] else "pending", "priority": None})
     for o in db.scalars(select(Obligation).where(Obligation.user_id == user.id, Obligation.status == "paid",
                                                  Obligation.due_date.between(first, last))):
         add(o.due_date, {"kind": "obligation", "ref_id": o.id, "title": o.name, "amount_cents": o.amount_cents,

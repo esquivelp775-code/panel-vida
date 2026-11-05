@@ -34,7 +34,7 @@ export default function Exportar() {
       </Card>
       <H2>Respaldo completo (JSON)</H2>
       <Card>
-        <Muted className="mb-3">Incluye cuentas, movimientos, asientos, obligaciones y presupuestos. Contiene datos financieros: guárdalo en un lugar seguro.</Muted>
+        <Muted className="mb-3">Incluye cuentas, movimientos, asientos, obligaciones, presupuestos, meses sin intereses, pendientes, hábitos y Ryventis. Contiene datos financieros: guárdalo en un lugar seguro.</Muted>
         <Btn className="w-full" disabled={!!busy} onClick={() => run("json")}>{busy === "json" ? "Descargando…" : "Descargar respaldo"}</Btn>
       </Card>
     </>

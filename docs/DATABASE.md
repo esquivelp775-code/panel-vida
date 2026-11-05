@@ -22,6 +22,7 @@ users 1───* audit_log
 | password_hash | text not null | scrypt |
 | display_name | text | |
 | currency | char(3) default `MXN` | moneda base |
+| token_version | integer not null default 0 | migración 0010: sube al cambiar la contraseña o cerrar todas las sesiones |
 | created_at | timestamptz | |
 
 ### `accounts`

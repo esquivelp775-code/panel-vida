@@ -35,7 +35,9 @@ function DebtChart({ pts }: { pts: { month: string; remaining_cents: number }[] 
 function DebtPlanCard() {
   const [target, setTarget] = useState("2027-06");
   const { data, loading, error, reload } = useLoad(() => api.debtPlan(target), [target]);
-  const lastDebtMonth = data?.debts.map((d) => d.projected_payoff_month).filter(Boolean).sort().pop();
+  const payoffs = data?.debts.map((d) => d.projected_payoff_month) || [];
+  // Sólo hay "ritmo actual" si TODAS las deudas tienen pagos que las liquidan; si no, se muestra la meta.
+  const lastDebtMonth = payoffs.length && payoffs.every(Boolean) ? [...payoffs].sort().pop() : null;
   return (
     <Card>
       <Kicker>Plan de deudas</Kicker>
@@ -44,7 +46,7 @@ function DebtPlanCard() {
       {loading && !data ? <Skeleton className="h-40" /> : data && (
         <>
           <p className="text-2xl font-bold leading-tight">
-            {data.feasible || !lastDebtMonth ? <>Libre de deudas en <span className="serif text-3xl capitalize">{fmtMonth(data.target_month)}</span></> : <>Al ritmo actual: <span className="serif text-3xl capitalize">{fmtMonth(lastDebtMonth)}</span></>}
+            {data.feasible ? <>Libre de deudas en <span className="serif text-3xl capitalize">{fmtMonth(data.target_month)}</span></> : lastDebtMonth ? <>Al ritmo actual: <span className="serif text-3xl capitalize">{fmtMonth(lastDebtMonth)}</span></> : <>Meta: <span className="serif text-3xl capitalize">{fmtMonth(data.target_month)}</span></>}
           </p>
           <div className="mt-3 flex items-center justify-between gap-2 rounded-[20px] bg-soft p-3 text-sm">
             <div><p className="text-xs text-muted">Necesario al mes</p><p className="num"><Money cents={data.total_monthly_needed_cents} /></p></div>
@@ -55,8 +57,8 @@ function DebtPlanCard() {
             {data.debts.map((d) => (
               <li key={d.account_id}>
                 <div className="flex items-baseline justify-between gap-2"><p className="truncate text-sm font-semibold">{d.name}</p><p className="num text-sm"><Money cents={d.owed_cents} /></p></div>
-                <p className="mb-1 text-xs text-muted">Necesitas {formatCents(d.monthly_needed_cents)}/mes · programado {formatCents(d.scheduled_monthly_cents)}</p>
-                <Bar pct={pctOf(d.scheduled_monthly_cents, Math.max(1, d.monthly_needed_cents))} over={!d.on_track} label={`Avance ${d.name}`} />
+                <p className="mb-1 text-xs text-muted">Necesitas {formatCents(d.monthly_needed_cents)}/mes · programado {formatCents(d.scheduled_monthly_cents)}/mes{d.scheduled_once_cents > 0 ? ` + ${formatCents(d.scheduled_once_cents)} en pagos únicos` : ""}</p>
+                <Bar pct={d.on_track ? 100 : pctOf(d.scheduled_monthly_cents, Math.max(1, d.monthly_needed_cents))} over={!d.on_track} label={`Avance ${d.name}`} />
               </li>
             ))}
           </ul>

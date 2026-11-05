@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { clearToken, getToken } from "@/lib/api";
-import { NAV_GROUPS, isNavItemActive, type NavItem } from "@/components/nav";
+import { NAV_GROUPS, groupHasPath, isNavItemActive, type NavItem } from "@/components/nav";
 
 const TABS = [
   { href: "/", label: "Inicio", d: "M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z" },
@@ -94,7 +94,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <p className="mb-5 px-3 pt-2 text-xl font-bold">Panel de <span className="serif text-2xl">Vida</span></p>
           <nav aria-label="Navegación lateral" className="flex-1 space-y-2 overflow-y-auto">
             {NAV_GROUPS.map((g) => {
-              const open = openG[g.id] ?? g.open;
+              // Un grupo plegado por defecto se abre si la página actual está en él (el elemento activo debe verse).
+              const open = openG[g.id] ?? (g.open || groupHasPath(g, path));
               return (
                 <div key={g.id}>
                   <button type="button" aria-expanded={open} onClick={() => toggle(g.id, open)}

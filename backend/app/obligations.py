@@ -4,7 +4,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import ledger
+from . import dates, ledger
 from . import schemas as s
 from .models import Obligation, User
 from .dates import add_months
@@ -97,7 +97,7 @@ def settle(db: Session, user: User, ob_id: int, p: s.ObligationSettle) -> tuple[
     ob = get(db, user, ob_id, lock=True)
     if ob.status != "pending":
         raise ledger.Conflict("La obligación no está pendiente")
-    tx, _ = ledger.record(db, user, _payload(ob, p, p.occurred_on or date.today()))
+    tx, _ = ledger.record(db, user, _payload(ob, p, p.occurred_on or dates.today()))
     ob.status, ob.settled_transaction_id = "paid", tx.id
     nxt = _spawn_next(db, user, ob)
     ledger.audit(db, user, "obligation", ob.id, "settle", {"transaction_id": tx.id})

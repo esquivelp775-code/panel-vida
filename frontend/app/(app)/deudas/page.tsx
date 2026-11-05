@@ -1,11 +1,11 @@
 "use client";
 import { useState } from "react";
 import { api, fmtDate, todayISO, type Account, type Obligation, type ObligationCreate, type ObligationUpdate } from "@/lib/api";
-import { centsToInput, formatCents, parseToCents } from "@/lib/money";
+import { centsToInput, formatCents, parseToCents, parseToCentsAllowZero } from "@/lib/money";
+import { KIND_ES, obligationTargets, settleAccounts } from "@/lib/obligations";
 import { errMsg, useLoad } from "@/lib/useLoad";
 import { Btn, Card, Confirm, Empty, ErrorBox, Field, H2, Input, Loading, Modal, Money, Muted, PageTitle, Select, SUBTYPE_LABEL, useToast } from "@/components/ui";
 
-const KIND_ES: Record<string, string> = { bill: "Recibo / servicio", loan_installment: "Cuota de préstamo", card_payment: "Pago de tarjeta", income_expected: "Ingreso esperado", other: "Otro" };
 const REC_ES: Record<string, string> = { none: "Una vez", monthly: "Mensual", yearly: "Anual" };
 
 function ObligationForm({ accounts, onDone, editing }: { accounts: Account[]; onDone: () => void; editing?: Obligation }) {
@@ -23,9 +23,10 @@ function ObligationForm({ accounts, onDone, editing }: { accounts: Account[]; on
 
   const inflow = kind === "income_expected";
   const assets = accounts.filter((a) => a.account_class === "asset");
-  const targets = accounts.filter((a) => (kind === "card_payment" ? a.subtype === "credit_card" : a.subtype === "loan"));
+  const targets = obligationTargets(kind, accounts);
   const cats = accounts.filter((a) => a.subtype === (inflow ? "income" : "expense"));
-  const needsTarget = kind === "card_payment" || kind === "loan_installment";
+  const needsTarget = kind === "card_payment" || kind === "loan_installment" || kind === "savings";
+  const targetLabel = kind === "card_payment" ? "Tarjeta" : kind === "savings" ? "Cuenta de ahorro o tanda" : "Préstamo o deuda";
   const needsCat = kind === "bill" || kind === "other" || inflow;
 
   async function submit(e: React.FormEvent) {
@@ -67,7 +68,7 @@ function ObligationForm({ accounts, onDone, editing }: { accounts: Account[]; on
       <Field label={inflow ? "Cuenta donde entrará" : "Pagar desde (opcional)"}>
         <Select value={payFrom} onChange={(e) => setPayFrom(e.target.value)}><option value="">—</option>{assets.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</Select>
       </Field>
-      {needsTarget && <Field label={kind === "card_payment" ? "Tarjeta" : "Préstamo"}><Select value={target} onChange={(e) => setTarget(e.target.value)}><option value="">—</option>{targets.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</Select></Field>}
+      {needsTarget && <Field label={targetLabel}><Select value={target} onChange={(e) => setTarget(e.target.value)}><option value="">—</option>{targets.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</Select></Field>}
       {needsCat && <Field label="Categoría"><Select value={cat} onChange={(e) => setCat(e.target.value)}><option value="">—</option>{cats.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</Select></Field>}
       <div className="flex gap-2">
         <Btn variant="secondary" className="flex-1" onClick={onDone} disabled={busy}>Cancelar</Btn>
@@ -87,6 +88,8 @@ export default function Deudas() {
   const [sAcc, setSAcc] = useState("");
   const [sAmt, setSAmt] = useState("");
   const [sDate, setSDate] = useState(todayISO());
+  const [sInterest, setSInterest] = useState("");
+  const [sIntCat, setSIntCat] = useState("");
   const [cancel, setCancel] = useState<Obligation | null>(null);
   const [skip, setSkip] = useState<Obligation | null>(null);
   const [edit, setEdit] = useState<Obligation | null>(null);
@@ -98,19 +101,28 @@ export default function Deudas() {
   const all = (accs.data || []).filter((a) => !a.is_system && !a.archived_at);
   const assets = all.filter((a) => a.account_class === "asset");
   const liabs = all.filter((a) => a.account_class === "liability");
+  const expenseCats = all.filter((a) => a.subtype === "expense");
+  const settleOptions = settle ? settleAccounts(settle.kind, all) : assets;
+  const interestCents = sInterest.trim() === "" ? 0 : parseToCentsAllowZero(sInterest);
   const reloadAll = () => { obl.reload(); up.reload(); accs.reload(); dash.reload(); };
 
   function openSettle(o: Obligation) {
-    setErr(null); setSettle(o); setSAcc(String(o.pay_from_account_id ?? assets[0]?.id ?? "")); setSAmt(centsToInput(o.amount_cents)); setSDate(todayISO());
+    setErr(null); setSettle(o); setSAcc(String(o.pay_from_account_id ?? assets[0]?.id ?? "")); setSAmt(centsToInput(o.amount_cents)); setSDate(todayISO()); setSInterest(""); setSIntCat(o.category_id != null ? String(o.category_id) : "");
   }
   async function doSettle() {
     if (!settle || busy) return;
     const c = parseToCents(sAmt);
     if (c === null) return setErr("Monto inválido.");
     if (!sAcc) return setErr("Elige la cuenta.");
+    if (interestCents === null) return setErr("Interés inválido.");
+    if (interestCents > c) return setErr("El interés no puede ser mayor que el pago.");
+    if (interestCents > 0 && !sIntCat) return setErr("Elige la categoría del interés.");
     setBusy(true); setErr(null);
     try {
-      await api.settleObligation(settle.id, { account_id: Number(sAcc), ...(c !== settle.amount_cents ? { amount_cents: c } : {}), occurred_on: sDate });
+      await api.settleObligation(settle.id, {
+        account_id: Number(sAcc), ...(c !== settle.amount_cents ? { amount_cents: c } : {}), occurred_on: sDate,
+        ...(interestCents > 0 ? { interest_cents: interestCents, interest_category_id: Number(sIntCat) } : {}),
+      });
       toast(settle.direction === "inflow" ? "Cobro registrado" : "Pago registrado"); setSettle(null); reloadAll();
     } catch (x) { setErr(errMsg(x)); } finally { setBusy(false); }
   }
@@ -212,8 +224,16 @@ export default function Deudas() {
       <Confirm open={!!settle} title={settle?.direction === "inflow" ? "Registrar cobro" : "Registrar pago"} confirmLabel="Confirmar" busy={busy} onConfirm={doSettle} onClose={() => setSettle(null)}
         message={settle ? `${settle.name} · ${formatCents(settle.amount_cents)}. Se creará el movimiento y se marcará como pagada.` : undefined}>
         <ErrorBox message={err} />
-        <Field label="Cuenta"><Select value={sAcc} onChange={(e) => setSAcc(e.target.value)}>{assets.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</Select></Field>
+        <Field label="Cuenta"><Select value={sAcc} onChange={(e) => setSAcc(e.target.value)}>{settleOptions.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</Select></Field>
         <Field label="Monto"><Input inputMode="decimal" value={sAmt} onChange={(e) => setSAmt(e.target.value)} /></Field>
+        {settle?.kind === "loan_installment" && (<>
+          <Field label="De ese monto, interés (opcional)" hint="El interés cuenta como gasto; el resto reduce la deuda.">
+            <Input inputMode="decimal" placeholder="0.00" value={sInterest} onChange={(e) => setSInterest(e.target.value)} />
+          </Field>
+          {(interestCents ?? 0) > 0 && (
+            <Field label="Categoría del interés"><Select value={sIntCat} onChange={(e) => setSIntCat(e.target.value)}><option value="">—</option>{expenseCats.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</Select></Field>
+          )}
+        </>)}
         <Field label="Fecha"><Input type="date" value={sDate} onChange={(e) => setSDate(e.target.value)} /></Field>
       </Confirm>
       <Confirm open={!!cancel} title="Cancelar obligación" danger confirmLabel="Cancelar obligación" busy={busy} onConfirm={doCancel} onClose={() => setCancel(null)}

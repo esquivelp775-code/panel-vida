@@ -1,11 +1,11 @@
 """CLI: python -m app.cli create-user | seed-demo. Sin registro público: el usuario se crea aquí."""
 import argparse
 import getpass
-from datetime import date, timedelta
+from datetime import timedelta
 
 from sqlalchemy import select
 
-from . import ledger
+from . import dates, ledger
 from . import obligations as obs
 from . import schemas as s
 from .db import SessionLocal
@@ -48,7 +48,7 @@ def seed_demo(email: str) -> None:
         user = db.scalar(select(User).where(User.email == email.lower()))
         if user is None:
             raise SystemExit("Crea primero el usuario")
-        today = date.today()
+        today = dates.today()
         mk = lambda **kw: ledger.create_account(db, user, s.AccountCreate(**kw))  # noqa: E731
         debit = mk(name="Cuenta de débito (demo)", subtype="checking", opening_balance_cents=1_250_000,
                    opening_date=today - timedelta(days=40))

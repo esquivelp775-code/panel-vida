@@ -51,8 +51,8 @@ def bulk(db: Session, user: User, p: s.SetupBulkIn) -> dict:
             category_id=cat.id if cat else None))
         created["obligations"] += 1
     for i, t in enumerate(p.transactions, start=1):
-        acc = _find(db, user, t.account, ("asset", "liability")) or _missing(i, "cuenta", t.account)
-        cat = _find(db, user, t.category, ("expense",)) or _missing(i, "categoría de gasto", t.category)
+        acc = _find(db, user, t.account, ("asset", "liability")) or _missing(i, "cuenta", t.account, "Gasto")
+        cat = _find(db, user, t.category, ("expense",)) or _missing(i, "categoría de gasto", t.category, "Gasto")
         # Clave de idempotencia por contenido: volver a subir el archivo no duplica el gasto.
         raw = json.dumps([str(t.occurred_on), t.description, t.amount_cents, t.account, t.category, i])
         key = "setup:" + hashlib.sha256(raw.encode()).hexdigest()[:40]
@@ -64,7 +64,8 @@ def bulk(db: Session, user: User, p: s.SetupBulkIn) -> dict:
                                             description=t.description, notes=t.notes), idempotency_key=key)
         created["transactions"] += 1
     for t in p.tasks:
-        if db.scalar(select(Task.id).where(Task.user_id == user.id, Task.title == t.title, Task.status != "done")):
+        # También los terminados: volver a subir el archivo no debe revivir lo que ya se resolvió.
+        if db.scalar(select(Task.id).where(Task.user_id == user.id, Task.title == t.title).limit(1)):
             skipped.append(f"Pendiente «{t.title}» ya existe")
             continue
         db.add(Task(user_id=user.id, status="pending", **t.model_dump()))
@@ -74,5 +75,5 @@ def bulk(db: Session, user: User, p: s.SetupBulkIn) -> dict:
     return {"dry_run": p.dry_run, "created": created, "skipped": skipped, "warnings": []}
 
 
-def _missing(i: int, what: str, name: str):
-    raise ledger.LedgerError(f"Pago #{i}: no existe la {what} «{name}» (créala en la sección Cuentas del archivo)")
+def _missing(i: int, what: str, name: str, row: str = "Pago"):
+    raise ledger.LedgerError(f"{row} #{i}: no existe la {what} «{name}» (créala en la sección Cuentas del archivo)")

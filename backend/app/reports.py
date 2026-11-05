@@ -156,7 +156,8 @@ def card_status(db: Session, card: Account, today: date) -> dict:
     # Ciclos para vencimientos y proyección (el ciclo actual se incluye aunque esté en 0, para emparejar
     # obligaciones de pago de tarjeta con su ciclo).
     pool = max(0, owed)
-    cycles = [{"closing": closing, "due_date": due, "amount_cents": cur_remaining, "overdue": overdue}]
+    cycles = [{"closing": closing, "due_date": due, "amount_cents": cur_remaining, "overdue": overdue,
+               "statement_cents": stmt_at_cut}]
     pool -= cur_remaining
     amt = min(next_est, max(0, pool))
     cycles.append({"closing": next_close, "due_date": next_due, "amount_cents": amt, "overdue": False})
@@ -190,7 +191,16 @@ def cards(db: Session, user: User, today: date) -> list[dict]:
     q = select(Account).where(
         Account.user_id == user.id, Account.subtype == "credit_card", Account.archived_at.is_(None)
     ).order_by(Account.name)
-    return [card_status(db, c, today) for c in db.scalars(q)]
+    out = [card_status(db, c, today) for c in db.scalars(q)]
+    # Si el saldo se cargó después del último corte el libro no conoce ese estado, pero el usuario sí sabe que
+    # está vencido: un pago de tarjeta pendiente con fecha pasada basta para marcarla.
+    late = set(db.scalars(select(Obligation.target_account_id).where(
+        Obligation.user_id == user.id, Obligation.status == "pending", Obligation.kind == "card_payment",
+        Obligation.due_date < today)))
+    for c in out:
+        if c["id"] in late and c["owed_cents"] > 0 and c["cycles"] and c["cycles"][0]["statement_cents"] == 0:
+            c["overdue"] = True
+    return out
 
 
 # ------------------------------------------------------------------ vencimientos
@@ -220,6 +230,10 @@ def upcoming(db: Session, user: User, today: date, days: int = 30) -> list[dict]
                 # (el de fecha límite más cercana); si ya se pagó directamente, no cuenta.
                 cyc = cycles[o.target_account_id]
                 idx = min(range(len(cyc)), key=lambda i: abs((cyc[i]["due_date"] - when).days))
+                # Sin saldo al corte no es que ya se pagó: la deuda se cargó después. Lo exigible está en el
+                # ciclo siguiente; emparejarlo con él evita ocultar el vencimiento y contarlo dos veces.
+                if idx == 0 and len(cyc) > 1 and cyc[0]["statement_cents"] == 0:
+                    idx = 1
                 covered.add((o.target_account_id, idx))
                 amount = min(amount, cyc[idx]["amount_cents"])
             if amount > 0:
@@ -412,6 +426,21 @@ def _months_between(a: date, b: date) -> int:
     return (b.year - a.year) * 12 + (b.month - a.month) + 1
 
 
+def _payoff_month(owed: int, one_offs: list[Obligation], monthly: int, today: date) -> str | None:
+    """Mes en que queda pagada la deuda: primero los pagos únicos en orden de fecha (p. ej. una tanda) y lo que
+    falte con el pago mensual desde este mes. None si lo programado nunca la cubre."""
+    left, last = owed, month_start(today)
+    for o in sorted(one_offs, key=lambda x: (x.due_date, x.id)):
+        last = max(last, o.due_date)
+        left -= o.amount_cents
+        if left <= 0:
+            return last.strftime("%Y-%m")
+    if monthly <= 0:
+        return None
+    by_monthly = add_months(month_start(today), -(-left // monthly) - 1, 1)
+    return max(by_monthly, last).strftime("%Y-%m")
+
+
 def debt_plan(db: Session, user: User, today: date, target: date) -> dict:
     """Cuánto pagar al mes para quedar libre de deudas en `target` (mes) y a qué ritmo vas.
     Todo en centavos enteros; los montos mensuales se redondean hacia arriba."""
@@ -428,12 +457,11 @@ def debt_plan(db: Session, user: User, today: date, target: date) -> dict:
         # Pagos mensuales ya programados hacia esta deuda (una obligación anual cuenta 1/12).
         scheduled = sum(o.amount_cents if o.recurrence != "yearly" else -(-o.amount_cents // 12)
                         for o in pending if o.target_account_id == a.id and o.recurrence != "none")
-        payoff = None
-        if scheduled > 0:
-            n = -(-owed // scheduled)
-            payoff = add_months(month_start(today), n - 1, 1).strftime("%Y-%m")
+        one_offs = [o for o in pending if o.target_account_id == a.id and o.recurrence == "none"]
+        payoff = _payoff_month(owed, one_offs, scheduled, today)
         debts.append({"account_id": a.id, "name": a.name, "subtype": a.subtype, "owed_cents": owed,
                       "monthly_needed_cents": needed, "scheduled_monthly_cents": scheduled,
+                      "scheduled_once_cents": sum(o.amount_cents for o in one_offs),
                       "projected_payoff_month": payoff,
                       "on_track": payoff is not None and payoff <= target.strftime("%Y-%m")})
     debts.sort(key=lambda d: -d["owed_cents"])

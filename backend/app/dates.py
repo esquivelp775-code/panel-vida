@@ -1,5 +1,14 @@
 import calendar
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
+
+from .config import get_settings
+
+
+def today() -> date:
+    """Fecha de hoy para el usuario. El servidor suele estar en UTC: sin esto, en México el día cambiaría a las 6 p. m."""
+    tz = get_settings().timezone
+    return datetime.now(ZoneInfo(tz)).date() if tz else date.today()
 
 
 def clamp(y: int, m: int, d: int) -> date:

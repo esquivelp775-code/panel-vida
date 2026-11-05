@@ -85,7 +85,7 @@ export default function CargaInicial() {
   return (
     <>
       <PageTitle>Carga inicial</PageTitle>
-      <Muted className="mb-4">Sube un archivo .json con tus cuentas, categorías y pagos programados. Primero se valida sin guardar nada.</Muted>
+      <Muted className="mb-4">Sube un archivo .json con tus cuentas, categorías, pagos programados, gastos y pendientes. Primero se valida sin guardar nada; lo que ya exista se omite.</Muted>
       <ErrorBox message={error} />
       <Card className="mb-4">
         <input type="file" accept=".json,application/json" onChange={(e) => onFile(e.target.files?.[0])} className="block w-full text-sm" />
@@ -102,7 +102,7 @@ export default function CargaInicial() {
       {check && (
         <Card className="mb-4">
           <H2>{done ? "Resultado" : "Validación"}</H2>
-          <p className="text-sm">Se crearán: {check.created.accounts} cuentas, {check.created.categories} categorías, {check.created.obligations} pagos programados{check.created.transactions ? `, ${check.created.transactions} gastos` : ""}{check.created.tasks ? ` y ${check.created.tasks} pendientes` : ""}.</p>
+          <p className="text-sm">{done ? "Se crearon" : "Se crearán"}: {check.created.accounts} cuentas, {check.created.categories} categorías, {check.created.obligations} pagos programados{check.created.transactions ? `, ${check.created.transactions} gastos` : ""}{check.created.tasks ? ` y ${check.created.tasks} pendientes` : ""}.</p>
           {check.skipped.length > 0 && <ul className="mt-2 list-disc pl-5 text-sm text-muted">{check.skipped.map((x, i) => <li key={i}>{x}</li>)}</ul>}
           {(check.warnings || []).length > 0 && <ul className="mt-2 list-disc pl-5 text-sm text-warn">{(check.warnings || []).map((x, i) => <li key={i}>{x}</li>)}</ul>}
           {errors.length > 0 && <ul role="alert" className="mt-2 list-disc pl-5 text-sm text-expense">{errors.map((x, i) => <li key={i}>{x}</li>)}</ul>}

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from .. import ledger
+from .. import dates, ledger
 from .. import reports as r
 from .. import schemas as s
 from ..db import get_db
@@ -52,12 +52,10 @@ def archive(account_id: int, db: Session = Depends(get_db), user: User = Depends
 @router.get("/{account_id}/installments")
 def installments(account_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Compras a meses sin intereses vigentes de una tarjeta."""
-    from datetime import date
-
     acc = ledger.get_account(db, user, account_id, allow_archived=True)
     if acc.subtype != "credit_card" or not acc.statement_day:
         return []
-    return r.installment_rows(db, acc, date.today())
+    return r.installment_rows(db, acc, dates.today())
 
 
 @router.post("/{account_id}/reconcile", response_model=s.ReconcileOut)

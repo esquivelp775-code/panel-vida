@@ -3,7 +3,8 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { api, fmtDate, todayISO, type Habit, type Task, type UpcomingItem } from "@/lib/api";
 import { addDays, greeting } from "@/lib/calendar";
-import { useLoad, errMsg } from "@/lib/useLoad";
+import { parseReminders } from "@/lib/reminders";
+import { getPref, useLoad, errMsg } from "@/lib/useLoad";
 import { Btn, ErrorBox, Field, Input, Kicker, Money, Muted, useToast } from "@/components/ui";
 import { CheckBox, CountMoney, Sheet, Skeleton } from "@/components/anim";
 
@@ -42,6 +43,12 @@ export default function Inicio() {
   const [sheet, setSheet] = useState<"task" | "habit" | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  // AppShell sólo renderiza tras montar: aquí ya se puede leer la preferencia de este dispositivo.
+  const [reminders] = useState(() => parseReminders(getPref("reminders") || null));
+  const [showQuote] = useState(() => getPref("hide_quote") !== "1");
+  // Si falla una carga no debe parecer que "no hay nada": un vencimiento oculto sale caro.
+  const loadError = dash.error || up.error || tasksL.error || habitsL.error;
+  const reloadAll = () => { dash.reload(); up.reload(); tasksL.reload(); habitsL.reload(); };
 
   const now = new Date();
   const dateStr = new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long" }).format(now);
@@ -95,16 +102,18 @@ export default function Inicio() {
           <button className={pill} onClick={() => { setText(""); setSheet("habit"); }}>+ Hábito</button>
         </div>
       </header>
-      <ErrorBox message={dash.error} onRetry={dash.reload} />
+      <ErrorBox message={loadError} onRetry={reloadAll} />
 
-      <Seg kicker="Recordatorios">
-        <p className="serif text-2xl leading-snug">“{FRASES[new Date().getDate() % FRASES.length]}”</p>
-        <ul className="mt-3 flex flex-wrap gap-2 text-sm">
-          {["💧 Toma agua", "🧘 Respira 1 minuto", "🚶 Muévete 5 minutos", "📵 Descanso de pantalla"].map((r) => (
-            <li key={r} className="rounded-full bg-surface px-3 py-1.5 ring-1 ring-line">{r}</li>
-          ))}
-        </ul>
-      </Seg>
+      {(showQuote || reminders.length > 0) && (
+        <Seg kicker="Recordatorios">
+          {showQuote && <p className="serif mb-3 text-2xl leading-snug">“{FRASES[new Date().getDate() % FRASES.length]}”</p>}
+          <ul className="flex flex-wrap gap-2 text-sm">
+            {reminders.map((r) => (
+              <li key={r} className="rounded-full bg-surface px-3 py-1.5 ring-1 ring-line">{r}</li>
+            ))}
+          </ul>
+        </Seg>
+      )}
       <Seg kicker="Hoy">
         {tasksL.loading && !tasksL.data ? <Skeleton className="h-16" /> : (
           <>

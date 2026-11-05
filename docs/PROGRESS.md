@@ -6,12 +6,23 @@
 Fases 0–7 implementadas y verificadas; CI verde en GitHub (backend, frontend y stack completo con
 Docker). Fase 8: despliegue preparado y probado en CI, **no desplegado** en un servidor real.
 
+## Auditoría y Configuración (2026-11-05)
+* Corregido: fecha "hoy" según `PANEL_TIMEZONE` (por defecto America/Mexico_City; antes UTC cambiaba el día a las
+  6 p. m.); vencimientos de tarjeta ocultos cuando el saldo se cargó tras el corte; plan de deudas ignoraba pagos
+  únicos (tandas); límite de inicio de sesión evadible con X-Forwarded-For (`PANEL_FORWARDED_ALLOW_IPS="*"`), ahora
+  hay tope por correo; respaldo JSON sin MSI, pendientes, hábitos ni Ryventis; calendario sin vencidos de meses
+  pasados; carga inicial revivía pendientes terminados.
+* UI: aportaciones (`savings`) y tandas en Deudas, interés al pagar cuotas, recibos pagables con tarjeta, MSI ya no se
+  hereda a la siguiente compra, Inicio muestra errores de carga, tasa editable en tarjetas.
+* Nuevo: `/configuracion/` (perfil, contraseña, cerrar otras sesiones, recordatorios, verificar el libro). Migración 0010.
+* Pendiente de decidir: `connect-src https:` del CSP en `netlify.toml` sigue sin fijar el dominio real de la API.
+
 ## Pedidos del propietario para la siguiente sesión (2026-11-05)
 1. **Ryventis completo** (grupo propio en el menú ya creado): clientes/CRM (etapas, seguimientos),
    proyectos en curso con monto y entregas, y **cuentas por cobrar** — muy desglosado (referencias:
    gestor de proyectos freelance y CRM personal que compartió).
 2. **Vida → Alimentación y ejercicio** (nueva sección).
-3. Recordatorios configurables (hoy son fijos + frase del día).
+3. ~~Recordatorios configurables~~ (hecho en Configuración; se guardan por dispositivo).
 4. Registrar MSI vigentes (Mercado Pago, Banamex, BBVA) y confirmar saldos con Conciliar.
 
 ## Carga inicial y diseño v3 (2026-11-05, cierre)

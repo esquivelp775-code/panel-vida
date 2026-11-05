@@ -35,7 +35,7 @@ function EditForm({ a, onDone }: { a: Account; onDone: () => void }) {
       const d = dayOk(due); if (d === null) return setError("Día de pago: número de 1 a 31.");
       body.credit_limit_cents = l; body.statement_day = s; body.due_day = d;
     }
-    if (a.subtype === "loan" && rate.trim() !== "") {
+    if ((a.subtype === "loan" || isCard) && rate.trim() !== "") {
       const r = parseToCents(rate); // "12.5" % -> 1250 puntos base, sin floats
       if (r === null) return setError("Tasa inválida.");
       body.interest_rate_bps = r;
@@ -55,7 +55,7 @@ function EditForm({ a, onDone }: { a: Account; onDone: () => void }) {
           <Field label="Día de pago"><Input inputMode="numeric" value={due} onChange={(e) => setDue(e.target.value)} /></Field>
         </div>
       </>)}
-      {a.subtype === "loan" && <Field label="Tasa anual % (opcional)"><Input inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} /></Field>}
+      {(a.subtype === "loan" || isCard) && <Field label="Tasa anual % (opcional)"><Input inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} /></Field>}
       <Muted className="mb-3">El tipo y el saldo no se pueden cambiar.</Muted>
       <div className="flex gap-2">
         <Btn variant="secondary" className="flex-1" onClick={onDone} disabled={busy}>Cancelar</Btn>

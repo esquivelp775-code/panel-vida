@@ -99,6 +99,9 @@ Consecuencias explícitas:
   proyecta de más). Un vencimiento de "pago de tarjeta" se empareja con el ciclo de fecha límite más cercana
   y cuenta sólo por lo que ese ciclo exige.
 * No se puede cambiar el día de corte mientras haya MSI vigentes.
+* **Saldo cargado después del último corte:** el libro no conoce ese estado (saldo al corte = 0), lo que no significa
+  que esté pagado. Un vencimiento de pago de tarjeta de ese ciclo se empareja con el ciclo siguiente: se muestra con
+  su fecha, cuenta una sola vez y marca la tarjeta como vencida (`tests/test_audit_regressions.py`).
 
 ### 4b. Meses sin intereses (MSI)
 * La compra a meses es **gasto completo y deuda completa en su fecha** (R2 no cambia): el patrimonio y el

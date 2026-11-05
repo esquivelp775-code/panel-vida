@@ -54,6 +54,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(Text)
     display_name: Mapped[str | None] = mapped_column(Text)
     currency: Mapped[str] = mapped_column(String(3), default="MXN")
+    # Sube al cambiar la contraseña o cerrar todas las sesiones; los tokens con otra versión dejan de valer.
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

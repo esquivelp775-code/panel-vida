@@ -178,7 +178,8 @@ export default function Registrar() {
         return;
       }
       toast(`Registrado: ${formatCents(tx.amount_cents)}`);
-      setAmount(""); setInterest(""); setDesc("");
+      // MSI también: la siguiente compra no debe heredar sin aviso los meses de la anterior.
+      setAmount(""); setInterest(""); setDesc(""); setMsi("");
       amountRef.current?.focus();
       reload();
     } catch (err) { setError(errMsg(err) + " Puedes reintentar: no se duplicará."); }

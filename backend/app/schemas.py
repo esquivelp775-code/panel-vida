@@ -39,6 +39,15 @@ class UserOut(BaseModel):
     currency: str
 
 
+class ProfileUpdate(Strict):
+    display_name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] | None = None
+
+
+class PasswordChange(Strict):
+    current_password: Annotated[str, StringConstraints(min_length=1, max_length=256)]
+    new_password: Annotated[str, StringConstraints(max_length=256)]
+
+
 # ------------------------------------------------------------------ accounts
 Subtype = Literal[
     "cash", "checking", "savings", "investment", "credit_card", "loan", "other_liability", "income", "expense"
