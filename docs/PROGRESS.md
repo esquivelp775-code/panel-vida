@@ -6,6 +6,15 @@
 Fases 0–7 implementadas y verificadas; CI verde en GitHub (backend, frontend y stack completo con
 Docker). Fase 8: despliegue preparado y probado en CI, **no desplegado** en un servidor real.
 
+## Vida y dashboard interactivo (2026-11-05)
+* API (migración 0006): pendientes (`/tasks`), hábitos con racha (`/habits`), calendario mensual (`/calendar`).
+* UI: navegación Inicio · Movimientos · Calendario · Vida · Más; dashboard con animaciones y gráficas
+  (dona por categoría, ingresos vs gastos, sparkline), próximos 7 días, hábitos de hoy; calendario con hoja
+  del día; Vida con pendientes agrupados y hábitos (7 días, racha, anillo semanal).
+* Verificado en Chromium contra la API real; 101 pruebas backend, 16 frontend.
+* Pendiente sugerido: CRM/proyectos (módulos "de vida" restantes de la misión original), notificaciones
+  push de vencimientos y pendientes, metas de ahorro.
+
 ## Despliegue (2026-11-05) — EN LÍNEA
 * **Desplegado y verificado por el propietario**: frontend en Netlify, API en Render (Blueprint `render.yaml`,
   plan gratuito), base de datos PostgreSQL 16 en Neon. Inicio de sesión real correcto.
@@ -100,8 +109,9 @@ Actividades de mayor consumo: construcción del frontend (Sonnet), revisión fin
 backend (Opus).
 
 ## Próxima acción
-1. Desplegar siguiendo DEPLOYMENT.md y activar el respaldo diario.
-2. Usar la app con datos reales unos días; ajustar categorías y flujo de captura según uso.
-3. Notificaciones de vencimientos (PWA push) y recordatorio de respaldo.
-4. Reglas de categorización automática en importación (por texto de descripción, más allá de la memoria local).
-5. Multimoneda (USD) si se necesita.
+1. Cargar datos reales (GUIA_SENCILLA.md → "¿Cómo cargo mis estados de cuenta…?").
+2. Metas de ahorro y presupuesto en el dashboard; notificaciones push (vencimientos, pendientes, hábitos).
+3. Módulos de vida restantes: proyectos y CRM personal (contactos/seguimientos), en ese orden.
+4. Mudanza a Debian cuando el servidor esté listo (GUIA_SENCILLA.md → "la mudanza").
+
+Para retomar: en claude.ai/code abrir sesión con `panel-vida` y pedir "lee CLAUDE.md y docs/PROGRESS.md y continúa".
