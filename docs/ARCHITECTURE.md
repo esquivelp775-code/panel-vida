@@ -213,3 +213,21 @@ Los pendientes y hábitos **no son datos financieros**: se pueden editar y borra
 ```
 `days` trae todos los días del mes. Eventos: vencimientos pendientes (con repeticiones) y pagos de tarjeta/MSI
 desde hoy, obligaciones pagadas del mes, y pendientes con fecha en el mes.
+
+### Ryventis y plan de deudas (v1, 2026-11-05)
+* `Task.area` admite además `"ryventis"` (pendientes/proyectos del negocio Ryventis).
+* `Task.status` admite `"pending" | "doing" | "done"` (tablero: Pendiente · En marcha · Terminado).
+  `PATCH /tasks/{id}` acepta `status`; `POST /tasks/{id}/start` → `doing`. `GET /tasks?area=ryventis` filtra por área.
+
+`GET /reports/debt-plan?target=YYYY-MM` (por defecto 2027-06) →
+```
+{target_month, months_left, total_owed_cents, total_monthly_needed_cents, avg_monthly_net_cents, feasible,
+ debts:[{account_id, name, subtype, owed_cents, monthly_needed_cents, scheduled_monthly_cents,
+         projected_payoff_month|null, on_track}],
+ projection:[{month:"YYYY-MM", remaining_cents}]}
+```
+* `monthly_needed_cents` = lo que hay que pagar al mes (redondeo hacia arriba) para liquidar en `target_month`.
+* `scheduled_monthly_cents` = pagos mensuales ya programados (obligaciones pendientes hacia esa deuda).
+* `projected_payoff_month` = mes en que se liquida al ritmo programado (null si no hay pagos programados).
+* `avg_monthly_net_cents` = ingresos − gastos promedio de los últimos 3 meses completos; `feasible` = ese
+  neto alcanza para `total_monthly_needed_cents`. `projection` = saldo total restante mes a mes pagando lo necesario.
