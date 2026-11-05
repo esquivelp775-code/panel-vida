@@ -6,6 +6,14 @@
 Fases 0–7 implementadas y verificadas; CI verde en GitHub (backend, frontend y stack completo con
 Docker). Fase 8: despliegue preparado y probado en CI, **no desplegado** en un servidor real.
 
+## Pedidos del propietario para la siguiente sesión (2026-11-05)
+1. **Ryventis completo** (grupo propio en el menú ya creado): clientes/CRM (etapas, seguimientos),
+   proyectos en curso con monto y entregas, y **cuentas por cobrar** — muy desglosado (referencias:
+   gestor de proyectos freelance y CRM personal que compartió).
+2. **Vida → Alimentación y ejercicio** (nueva sección).
+3. Recordatorios configurables (hoy son fijos + frase del día).
+4. Registrar MSI vigentes (Mercado Pago, Banamex, BBVA) y confirmar saldos con Conciliar.
+
 ## Carga inicial y diseño v3 (2026-11-05, cierre)
 * `POST /setup/bulk` (dry_run, idempotente) + pantalla `/carga-inicial/`; obligación `savings` (tandas =
   ahorro, no gasto). Diseño v3 en grises con foco de luz al cursor y menú lateral agrupado.
