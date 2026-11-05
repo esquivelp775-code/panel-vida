@@ -22,7 +22,11 @@ export const NAV_GROUPS: NavGroup[] = [
     { href: "/vida/?tab=habitos", label: "Hábitos", d: "M12 21s-7-4.5-9-9a5 5 0 019-3 5 5 0 019 3c-2 4.5-9 9-9 9z" },
   ] },
   { id: "ryventis", label: "Ryventis", open: true, items: [
-    { href: "/vida/?tab=ryventis", label: "Tablero de proyectos", d: "M4 5h6v14H4zM14 5h6v8h-6z" },
+    { href: "/ryventis/", label: "Resumen", d: "M4 5h6v14H4zM14 5h6v8h-6z" },
+    { href: "/ryventis/?tab=clientes", label: "Clientes", d: "M16 11a4 4 0 10-8 0 4 4 0 008 0zM4 21a8 8 0 0116 0" },
+    { href: "/ryventis/?tab=proyectos", label: "Proyectos", d: "M3 7h7l2 2h9v10H3z" },
+    { href: "/ryventis/?tab=cobros", label: "Cobros", d: "M12 3v18M17 7H9.5a3 3 0 000 6h5a3 3 0 010 6H6" },
+    { href: "/ryventis/?tab=pendientes", label: "Pendientes", d: "M5 12l4 4 10-10" },
   ] },
   { id: "otros", label: "Otros", open: false, items: [
     { href: "#logout", label: "Cerrar sesión", d: "M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10", action: "logout" },

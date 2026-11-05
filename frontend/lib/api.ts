@@ -89,8 +89,8 @@ export interface DebtPlanDebt { account_id: number; name: string; subtype: strin
 export interface DebtPlan { target_month: string; months_left: number; total_owed_cents: number; total_monthly_needed_cents: number; avg_monthly_net_cents: number; feasible: boolean; debts: DebtPlanDebt[]; projection: { month: string; remaining_cents: number }[] }
 export type Priority = "low" | "normal" | "high";
 export type Area = "finanzas" | "personal" | "trabajo" | "casa" | "salud" | "ryventis" | "otro";
-export interface Task { id: number; title: string; notes: string | null; due_date: string | null; priority: Priority; area: Area; status: "pending" | "doing" | "done"; completed_at: string | null; created_at: string }
-export interface TaskCreate { title: string; notes?: string; due_date?: string | null; priority?: Priority; area?: Area }
+export interface Task { id: number; title: string; notes: string | null; due_date: string | null; priority: Priority; area: Area; status: "pending" | "doing" | "done"; completed_at: string | null; created_at: string; project_id?: number | null }
+export interface TaskCreate { title: string; notes?: string; due_date?: string | null; priority?: Priority; area?: Area; project_id?: number | null }
 export interface Habit { id: number; name: string; emoji: string; target_per_week: number; streak_days: number; done_today: boolean; week_count: number; last_7: { date: string; done: boolean }[] }
 export interface CalEvent { kind: "obligation" | "card" | "task"; ref_id: number; title: string; amount_cents: number | null; direction: "outflow" | "inflow" | null; status: "pending" | "paid" | "done" | "overdue"; priority: Priority | null }
 export interface CalDay { date: string; income_cents: number; expense_cents: number; tx_count: number; habits_done: number; events: CalEvent[] }
@@ -148,6 +148,38 @@ async function json<T>(path: string, opts: Opts = {}, auth = true): Promise<T> {
   return (await res.json()) as T;
 }
 
+
+/* ---------- Ryventis (CRM + ERP) ---------- */
+export type Stage = "nuevo" | "charla" | "propuesta" | "cliente" | "perdido";
+export type InteractionKind = "mensaje" | "llamada" | "email" | "reunion" | "otro";
+export type ProjectStatus = "pendiente" | "en_marcha" | "terminado" | "cancelado";
+export interface Interaction { id: number; client_id: number; kind: InteractionKind; summary: string; happened_on: string }
+export interface Client {
+  id: number; name: string; company: string; phone: string; email: string; stage: Stage; source: string; notes: string;
+  next_step: string; next_step_date: string | null; created_at: string;
+  projects_count: number; open_value_cents: number; receivable_cents: number;
+}
+export interface ClientDetail extends Client { interactions: Interaction[]; projects: Project[] }
+export interface ClientInput { name: string; company?: string; phone?: string; email?: string; stage?: Stage; source?: string; notes?: string; next_step?: string; next_step_date?: string | null }
+export interface Project {
+  id: number; client_id: number | null; client_name: string | null; name: string; amount_cents: number; status: ProjectStatus;
+  due_date: string | null; notes: string; created_at: string; tasks_total: number; tasks_done: number; collected_cents: number; receivable_cents: number;
+}
+export interface ProjectInput { name: string; client_id?: number | null; amount_cents?: number; status?: ProjectStatus; due_date?: string | null; notes?: string }
+export interface Receivable {
+  id: number; project_id: number | null; project_name: string | null; client_id: number | null; client_name: string | null;
+  description: string; amount_cents: number; due_date: string | null; status: "por_cobrar" | "cobrado";
+  collected_transaction_id: number | null; collected_on: string | null; overdue: boolean;
+}
+export interface ReceivableInput { description: string; amount_cents: number; project_id?: number | null; client_id?: number | null; due_date?: string | null }
+export interface RyventisSummary {
+  pipeline: Record<Stage, number>; pipeline_value_cents: number; projects: { pendiente: number; en_marcha: number; terminado: number };
+  active_value_cents: number; receivable_cents: number; overdue_receivable_cents: number; collected_month_cents: number; collected_year_cents: number;
+  tasks: { pending: number; doing: number; done: number };
+  followups: { client_id: number; name: string; next_step: string; next_step_date: string; overdue: boolean }[];
+  upcoming_deliveries: { project_id: number; name: string; due_date: string; client_name: string | null }[];
+}
+
 /* ---------- Endpoints ---------- */
 export interface BulkResult { dry_run: boolean; created: { accounts: number; categories: number; obligations: number; transactions?: number; tasks?: number }; skipped: string[]; warnings?: string[]; errors?: string[] }
 export const api = {
@@ -192,6 +224,24 @@ export const api = {
   completeTask: (id: number) => json<Task>(`/tasks/${id}/complete`, { method: "POST" }),
   reopenTask: (id: number) => json<Task>(`/tasks/${id}/reopen`, { method: "POST" }),
   deleteTask: async (id: number) => { await raw(`/tasks/${id}`, { method: "DELETE" }); },
+  ryvSummary: () => json<RyventisSummary>("/ryventis/summary"),
+  ryvClients: (stage?: Stage) => json<Client[]>("/ryventis/clients", { query: { stage } }),
+  ryvClient: (id: number) => json<ClientDetail>(`/ryventis/clients/${id}`),
+  ryvCreateClient: (b: ClientInput) => json<Client>("/ryventis/clients", { method: "POST", body: b }),
+  ryvUpdateClient: (id: number, b: Partial<ClientInput>) => json<Client>(`/ryventis/clients/${id}`, { method: "PATCH", body: b }),
+  ryvDeleteClient: async (id: number) => { await raw(`/ryventis/clients/${id}`, { method: "DELETE" }); },
+  ryvAddInteraction: (id: number, b: { kind: InteractionKind; summary: string; happened_on?: string }) =>
+    json<Interaction>(`/ryventis/clients/${id}/interactions`, { method: "POST", body: b }),
+  ryvProjects: (status?: ProjectStatus) => json<Project[]>("/ryventis/projects", { query: { status } }),
+  ryvCreateProject: (b: ProjectInput) => json<Project>("/ryventis/projects", { method: "POST", body: b }),
+  ryvUpdateProject: (id: number, b: Partial<ProjectInput>) => json<Project>(`/ryventis/projects/${id}`, { method: "PATCH", body: b }),
+  ryvDeleteProject: async (id: number) => { await raw(`/ryventis/projects/${id}`, { method: "DELETE" }); },
+  ryvReceivables: (status?: "por_cobrar" | "cobrado") => json<Receivable[]>("/ryventis/receivables", { query: { status } }),
+  ryvCreateReceivable: (b: ReceivableInput) => json<Receivable>("/ryventis/receivables", { method: "POST", body: b }),
+  ryvUpdateReceivable: (id: number, b: Partial<ReceivableInput>) => json<Receivable>(`/ryventis/receivables/${id}`, { method: "PATCH", body: b }),
+  ryvDeleteReceivable: async (id: number) => { await raw(`/ryventis/receivables/${id}`, { method: "DELETE" }); },
+  ryvCollect: (id: number, b: { account_id: number; category_id?: number; occurred_on?: string }) =>
+    json<Receivable>(`/ryventis/receivables/${id}/collect`, { method: "POST", body: b }),
   habits: () => json<Habit[]>("/habits"),
   createHabit: (b: { name: string; emoji?: string; target_per_week?: number }) => json<Habit>("/habits", { method: "POST", body: b }),
   updateHabit: (id: number, b: { name?: string; emoji?: string; target_per_week?: number }) => json<Habit>(`/habits/${id}`, { method: "PATCH", body: b }),

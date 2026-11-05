@@ -71,3 +71,19 @@ test("importar: filas de commit y relleno masivo", () => {
   assert.deepEqual(r.rows.map((x) => [x.row, x.category_id, x.counter_account_id]), [[1, 7, undefined], [2, undefined, 9]]);
   assert.equal(initialState(rows[0], "12").categoryId, "12");
 });
+
+import { initials, stageIndex, pct, dueLabel } from "../lib/ryventis.ts";
+test("ryventis: iniciales, etapa, porcentaje y entrega", () => {
+  assert.equal(initials("Ana López Ruiz"), "AL");
+  assert.equal(initials("  zeta "), "ZE");
+  assert.equal(initials(""), "?");
+  assert.equal(stageIndex("nuevo"), 0);
+  assert.equal(stageIndex("cliente"), 3);
+  assert.equal(stageIndex("perdido"), -1);
+  assert.equal(pct(1, 3), 33);
+  assert.equal(pct(5, 3), 100);
+  assert.equal(pct(1, 0), 0);
+  assert.equal(dueLabel("2026-11-05", "2026-11-05", (x) => x), "Entrega hoy");
+  assert.equal(dueLabel("2026-11-04", "2026-11-05", (x) => x), "Vencida · 2026-11-04");
+  assert.equal(dueLabel("2026-11-28", "2026-11-05", () => "28 nov"), "28 nov");
+});

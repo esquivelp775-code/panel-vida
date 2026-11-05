@@ -33,6 +33,7 @@ export default function Inicio() {
   const me = useLoad(() => api.me(), []);
   // Nombre del usuario (display_name) o la parte del correo antes de "@"; nunca un nombre fijo en el código.
   const firstName = (me.data?.display_name || me.data?.email?.split("@")[0] || "").split(/[\s._-]/)[0];
+  const ryvS = useLoad(() => api.ryvSummary(), []);
   const up = useLoad(() => api.upcoming(7), []);
   const tasksL = useLoad(() => api.tasks(), []);
   const habitsL = useLoad(() => api.habits(), []);
@@ -160,13 +161,11 @@ export default function Inicio() {
 
       <Seg kicker="Ryventis">
         <div className="mb-3 flex gap-6">
+          <div><p className="num text-3xl">{ryvS.data ? <Money cents={ryvS.data.receivable_cents} /> : "—"}</p><p className="text-xs text-muted">Por cobrar</p></div>
           <div><p className="num text-3xl">{ryvPending}</p><p className="text-xs text-muted">Pendientes</p></div>
-          <div><p className="num text-3xl">{ryvDoing.length}</p><p className="text-xs text-muted">En marcha</p></div>
+          <div><p className="num text-3xl">{ryvS.data ? ryvS.data.projects.en_marcha : ryvDoing.length}</p><p className="text-xs text-muted">En marcha</p></div>
         </div>
-        {ryvDoing.slice(0, 3).map((t) => (
-          <p key={t.id} className="mb-1 truncate rounded-[16px] bg-soft px-3 py-2 text-sm font-medium" style={{ boxShadow: "inset 3px 0 0 #FF9E7A" }}>{t.title}</p>
-        ))}
-        <Link href="/vida/?tab=ryventis" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold underline">Ver tablero →</Link>
+        <Link href="/ryventis/" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold underline">Ver tablero →</Link>
       </Seg>
 
       <Seg kicker="Finanzas">

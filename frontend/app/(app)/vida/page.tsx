@@ -1,7 +1,6 @@
 "use client";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Board from "@/components/Board";
 import { api, fmtDate, todayISO, type Area, type Habit, type Priority, type Task } from "@/lib/api";
 import { addDays } from "@/lib/calendar";
 import { AREAS, AREA_COLOR, AREA_LABEL, groupTasks } from "@/lib/tasks";
@@ -9,7 +8,7 @@ import { errMsg, useLoad } from "@/lib/useLoad";
 import { Btn, Card, Confirm, Empty, ErrorBox, Field, Input, Muted, Select, Textarea, useToast } from "@/components/ui";
 import { CheckBox, Ring, Sheet, Skeleton } from "@/components/anim";
 
-type Tab = "tasks" | "habits" | "ryventis";
+type Tab = "tasks" | "habits";
 
 export default function Page() {
   return <Suspense fallback={null}><Vida /></Suspense>;
@@ -20,20 +19,19 @@ function Vida() {
   // Reacciona a ?tab= también al navegar desde el menú lateral (antes sólo se leía al montar).
   const q = useSearchParams().get("tab");
   useEffect(() => {
-    if (q === "ryventis" || q === "habits") setTab(q);
-    else if (q === "habitos") setTab("habits");
+    if (q === "habits" || q === "habitos") setTab("habits");
     else setTab("tasks");
   }, [q]);
   return (
     <>
       <h1 className="t-h1 mb-4"><span className="serif">Vida</span> diaria</h1>
-      <div role="tablist" className="relative mb-4 grid grid-cols-3 rounded-full bg-soft p-1">
-        {([["tasks", "Pendientes"], ["habits", "Hábitos"], ["ryventis", "Ryventis"]] as const).map(([k, l]) => (
+      <div role="tablist" className="relative mb-4 grid grid-cols-2 rounded-full bg-soft p-1">
+        {([["tasks", "Pendientes"], ["habits", "Hábitos"]] as const).map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`relative z-10 min-h-11 text-sm font-semibold transition-colors duration-200 ${tab === k ? "text-onaccent" : "text-muted"}`}>{l}</button>
         ))}
-        <span className="absolute inset-y-1 left-1 w-[calc(33.333%-3px)] rounded-full bg-accent transition-transform duration-300 ease-[cubic-bezier(.22,1,.36,1)]" style={{ transform: `translateX(${["tasks", "habits", "ryventis"].indexOf(tab) * 100}%)` }} />
+        <span className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full bg-accent transition-transform duration-300 ease-[cubic-bezier(.22,1,.36,1)]" style={{ transform: `translateX(${["tasks", "habits"].indexOf(tab) * 100}%)` }} />
       </div>
-      <div key={tab} className="pv-page">{tab === "tasks" ? <Tasks /> : tab === "habits" ? <Habits /> : <Board />}</div>
+      <div key={tab} className="pv-page">{tab === "tasks" ? <Tasks /> : <Habits />}</div>
     </>
   );
 }
@@ -60,7 +58,7 @@ function Tasks() {
   const monday = addDays(today, -((dow + 6) % 7));
   const week = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   const DOW3 = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-  const tasks = (data || []).map((t) => (local[t.id] ? { ...t, status: local[t.id] } : t)).filter((t) => !day || t.due_date === day);
+  const tasks = (data || []).filter((t) => t.area !== "ryventis").map((t) => (local[t.id] ? { ...t, status: local[t.id] } : t)).filter((t) => !day || t.due_date === day);
   const g = groupTasks(tasks, today);
 
   async function add(e: React.FormEvent) {
@@ -118,7 +116,7 @@ function Tasks() {
             {(["low", "normal", "high"] as const).map((p) => <option key={p} value={p}>{PRI_LABEL[p]}</option>)}
           </Select>
           <Select value={area} onChange={(e) => setArea(e.target.value as Area)} className="!min-h-9 !w-28 !py-1 !text-xs" aria-label="Área">
-            {AREAS.map((a) => <option key={a} value={a}>{AREA_LABEL[a]}</option>)}
+            {AREAS.filter((a) => a !== "ryventis").map((a) => <option key={a} value={a}>{AREA_LABEL[a]}</option>)}
           </Select>
         </div>
       </form>
@@ -181,7 +179,7 @@ function EditForm({ task, onSaved, onDelete }: { task: Task; onSaved: () => void
       <div className="grid grid-cols-3 gap-2">
         <Field label="Fecha"><Input type="date" value={f.due} onChange={(e) => setF({ ...f, due: e.target.value })} /></Field>
         <Field label="Prioridad"><Select value={f.pri} onChange={(e) => setF({ ...f, pri: e.target.value as Priority })}>{(["low", "normal", "high"] as const).map((p) => <option key={p} value={p}>{PRI_LABEL[p]}</option>)}</Select></Field>
-        <Field label="Área"><Select value={f.area} onChange={(e) => setF({ ...f, area: e.target.value as Area })}>{AREAS.map((a) => <option key={a} value={a}>{AREA_LABEL[a]}</option>)}</Select></Field>
+        <Field label="Área"><Select value={f.area} onChange={(e) => setF({ ...f, area: e.target.value as Area })}>{AREAS.filter((a) => a !== "ryventis").map((a) => <option key={a} value={a}>{AREA_LABEL[a]}</option>)}</Select></Field>
       </div>
       <div className="flex gap-2">
         <Btn variant="danger" onClick={onDelete}>Eliminar</Btn>

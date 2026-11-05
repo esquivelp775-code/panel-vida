@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { api, fmtDate, todayISO, type Task } from "@/lib/api";
 import { errMsg, useLoad } from "@/lib/useLoad";
-import { ErrorBox, Input, useToast } from "@/components/ui";
+import { ErrorBox, Input, Select, useToast } from "@/components/ui";
 import { Skeleton } from "@/components/anim";
 
 type St = "pending" | "doing" | "done";
@@ -15,6 +15,8 @@ export default function Board() {
   const toast = useToast();
   const today = todayISO();
   const { data, error, loading, reload } = useLoad(() => api.tasks(undefined, "ryventis"), []);
+  const projs = useLoad(() => api.ryvProjects().catch(() => []), []);
+  const [projectId, setProjectId] = useState("");
   const [sel, setSel] = useState<number | null>(null);
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
@@ -27,7 +29,7 @@ export default function Board() {
   async function add(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim() || busy) return;
-    await run(() => api.createTask({ title: title.trim(), area: "ryventis" }));
+    await run(() => api.createTask({ title: title.trim(), area: "ryventis", project_id: projectId ? Number(projectId) : null }));
     setTitle("");
   }
   const act = "pv-press min-h-9 rounded-full bg-soft px-3 text-xs font-semibold ring-1 ring-line disabled:opacity-50";
@@ -67,6 +69,10 @@ export default function Board() {
                 {c.st === "pending" && (
                   <form onSubmit={add} className="mt-2">
                     <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="+ Nueva tarea…" maxLength={200} aria-label="Nueva tarea de Ryventis" />
+                    <Select value={projectId} onChange={(e) => setProjectId(e.target.value)} className="mt-2 !min-h-9 !py-1 !text-xs" aria-label="Proyecto (opcional)">
+                      <option value="">Sin proyecto</option>
+                      {(projs.data || []).filter((p) => p.status !== "cancelado").map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </Select>
                   </form>
                 )}
               </section>
