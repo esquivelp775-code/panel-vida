@@ -32,9 +32,9 @@ await page.click("button[type=submit]");
 await page.waitForURL((u) => !u.pathname.includes("login"), { timeout: 15000 });
 await page.getByText("Dinero disponible").waitFor({ timeout: 15000 });
 const dash = await api("/dashboard");
-const shown = await page.textContent("body");
 const fmt = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(dash.available_cents / 100);
-assert.ok(shown.includes(fmt), `el dashboard muestra el disponible del API (${fmt})`);
+// El número se anima (conteo); se espera a que muestre la cifra final del API.
+await page.getByText(fmt, { exact: true }).first().waitFor({ timeout: 10000 });
 
 await page.goto(`${BASE}/registrar/`);
 const amount = page.locator("input[inputmode=decimal]").first();
