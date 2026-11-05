@@ -81,6 +81,10 @@ def _payload(ob: Obligation, p: s.ObligationSettle, when: date) -> s.BaseModel:
                                loan_account_id=need(ob.target_account_id, "La obligación no tiene préstamo destino"),
                                principal_cents=principal, interest_cents=p.interest_cents,
                                interest_category_id=p.interest_category_id or ob.category_id, **base)
+    if ob.kind == "savings":  # aportación a tanda/ahorro: transferencia a un activo propio, no es gasto
+        return s.TransferIn(kind="transfer", from_account_id=need(account, "Indica la cuenta de pago"),
+                            to_account_id=need(ob.target_account_id, "Indica la cuenta de ahorro/tanda destino"),
+                            amount_cents=amount, **base)
     if ob.kind == "income_expected":
         return s.IncomeIn(kind="income", account_id=need(account, "Indica la cuenta que recibe"),
                           category_id=need(ob.category_id, "Indica la categoría de ingreso"), amount_cents=amount,

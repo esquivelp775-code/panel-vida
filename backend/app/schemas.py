@@ -228,7 +228,7 @@ class VoidIn(Strict):
 # ------------------------------------------------------------------ obligations
 class ObligationCreate(Strict):
     name: Name
-    kind: Literal["bill", "loan_installment", "card_payment", "income_expected", "other"]
+    kind: Literal["bill", "loan_installment", "card_payment", "income_expected", "other", "savings"]
     amount_cents: Cents
     due_date: date
     recurrence: Literal["none", "monthly", "yearly"] = "none"
@@ -372,3 +372,38 @@ class HabitUpdate(Strict):
 
 class HabitToggle(Strict):
     day: date | None = None
+
+
+# ------------------------------------------------------------------ carga inicial
+class SetupAccount(Strict):
+    name: Name
+    subtype: Subtype
+    opening_balance_cents: NonNegCents = 0
+    opening_date: date | None = None
+    credit_limit_cents: NonNegCents | None = None
+    statement_day: Day | None = None
+    due_day: Day | None = None
+    interest_rate_bps: Annotated[int, Field(strict=True, ge=0, le=100_000)] | None = None
+
+
+class SetupCategory(Strict):
+    name: Name
+    subtype: Literal["income", "expense"]
+
+
+class SetupObligation(Strict):
+    name: Name
+    kind: Literal["bill", "loan_installment", "card_payment", "income_expected", "other", "savings"]
+    amount_cents: Cents
+    due_date: date
+    recurrence: Literal["none", "monthly", "yearly"] = "none"
+    pay_from: Name | None = None
+    target: Name | None = None
+    category: Name | None = None
+
+
+class SetupBulkIn(Strict):
+    dry_run: bool = True
+    accounts: Annotated[list[SetupAccount], Field(max_length=200)] = []
+    categories: Annotated[list[SetupCategory], Field(max_length=200)] = []
+    obligations: Annotated[list[SetupObligation], Field(max_length=1000)] = []
