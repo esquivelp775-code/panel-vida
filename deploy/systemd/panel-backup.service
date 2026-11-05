@@ -1,0 +1,13 @@
+# Copiar a /etc/systemd/system/ y ajustar WorkingDirectory a la ruta del repositorio.
+[Unit]
+Description=Respaldo cifrado de Panel de Vida
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/panel-vida
+Environment=PANEL_BACKUP_DIR=/var/backups/panel-vida
+Environment=PANEL_BACKUP_PASSFILE=/root/.panel-backup-pass
+Environment=PANEL_BACKUP_KEEP_DAYS=30
+ExecStart=/opt/panel-vida/deploy/backup.sh

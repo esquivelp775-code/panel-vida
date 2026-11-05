@@ -97,6 +97,17 @@ jobs:
           a=$(docker compose exec -T db psql -U panel -d panel_vida -tAc "$q")
           b=$(docker compose exec -T db psql -U panel -d panel_vida_restore -tAc "$q")
           echo "original=$a restaurada=$b"; test "$a" = "$b"
+      - name: Respaldo cifrado (deploy/backup.sh) y restauración (deploy/restore.sh)
+        run: |
+          openssl rand -base64 32 > /tmp/pass && chmod 600 /tmp/pass
+          PANEL_BACKUP_DIR=/tmp/respaldos PANEL_BACKUP_PASSFILE=/tmp/pass deploy/backup.sh
+          f=$(ls /tmp/respaldos/*.dump.gpg | head -1)
+          ! grep -q PGDMP "$f"   # el archivo no está en claro
+          PANEL_BACKUP_PASSFILE=/tmp/pass deploy/restore.sh "$f" panel_vida_restore_gpg
+          q="SELECT count(*) || ':' || coalesce(sum(abs(amount_cents)),0) FROM entries"
+          a=$(docker compose exec -T db psql -U panel -d panel_vida -tAc "$q")
+          b=$(docker compose exec -T db psql -U panel -d panel_vida_restore_gpg -tAc "$q")
+          echo "original=$a restaurada=$b"; test "$a" = "$b"
       - name: Logs si falla
         if: failure()
         run: docker compose logs --tail=200

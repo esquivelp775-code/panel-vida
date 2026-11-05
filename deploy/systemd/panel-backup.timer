@@ -1,0 +1,10 @@
+[Unit]
+Description=Respaldo diario de Panel de Vida
+
+[Timer]
+OnCalendar=*-*-* 03:17:00
+Persistent=true
+RandomizedDelaySec=10m
+
+[Install]
+WantedBy=timers.target

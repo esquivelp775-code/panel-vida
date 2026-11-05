@@ -1,0 +1,12 @@
+# Opcional: publica el stack con HTTPS mediante Cloudflare Tunnel, sin abrir puertos del router.
+# Uso: docker compose -f docker-compose.yml -f docker-compose.tunnel.yml up -d
+# Requiere CLOUDFLARE_TUNNEL_TOKEN en .env (se crea en el panel de Cloudflare Zero Trust → Tunnels,
+# con un "Public hostname" que apunte a http://web:80).
+services:
+  tunnel:
+    image: cloudflare/cloudflared:2024.12.2
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?define CLOUDFLARE_TUNNEL_TOKEN en .env}
+    depends_on: [web]
