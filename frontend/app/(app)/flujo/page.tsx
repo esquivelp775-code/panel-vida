@@ -29,14 +29,14 @@ export default function Flujo() {
               <li key={m.month}>
                 <p className="mb-1 text-sm font-semibold capitalize">{fmtMonth(m.month)}</p>
                 <div className="space-y-1" aria-hidden="true">
-                  <div className="h-2.5 rounded-full bg-emerald-500" style={{ width: `${Math.max(1, pctOf(m.income_cents, maxM))}%` }} />
-                  <div className="h-2.5 rounded-full bg-rose-500" style={{ width: `${Math.max(1, pctOf(m.expense_cents, maxM))}%` }} />
+                  <div className="h-2.5 rounded-full bg-ink" style={{ width: `${Math.max(1, pctOf(m.income_cents, maxM))}%` }} />
+                  <div className="h-2.5 rounded-full bg-expense" style={{ width: `${Math.max(1, pctOf(m.expense_cents, maxM))}%` }} />
                 </div>
                 <dl className="mt-1 grid grid-cols-2 gap-x-2 text-xs">
-                  <dt className="text-slate-500">Ingresos</dt><dd className="text-right"><Money cents={m.income_cents} /></dd>
-                  <dt className="text-slate-500">Gastos</dt><dd className="text-right"><Money cents={m.expense_cents} /></dd>
-                  <dt className="text-slate-500">Neto (ingresos − gastos)</dt><dd className="text-right font-semibold"><Money cents={m.net_cents} tone /></dd>
-                  <dt className="text-slate-500">Cambio en dinero disponible</dt><dd className="text-right font-semibold"><Money cents={m.liquid_change_cents} tone /></dd>
+                  <dt className="text-muted">Ingresos</dt><dd className="text-right"><Money cents={m.income_cents} /></dd>
+                  <dt className="text-muted">Gastos</dt><dd className="text-right"><Money cents={m.expense_cents} /></dd>
+                  <dt className="text-muted">Neto (ingresos − gastos)</dt><dd className="text-right font-semibold"><Money cents={m.net_cents} tone /></dd>
+                  <dt className="text-muted">Cambio en dinero disponible</dt><dd className="text-right font-semibold"><Money cents={m.liquid_change_cents} tone /></dd>
                 </dl>
               </li>
             ))}
@@ -49,19 +49,19 @@ export default function Flujo() {
       <ErrorBox message={proj.error} onRetry={proj.reload} />
       {proj.loading && !proj.data ? <Loading /> : proj.data && (
         <Card className="mb-4">
-          <p className="text-sm text-slate-500">Disponible hoy</p>
+          <p className="text-sm text-muted">Disponible hoy</p>
           <p className="text-xl font-bold"><Money cents={proj.data.starting_available_cents} /></p>
-          <div className={`mt-2 rounded-xl p-3 ${proj.data.min_balance_cents < 0 ? "bg-red-50 text-red-800 ring-1 ring-red-200 dark:bg-red-950 dark:text-red-200" : "bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200"}`}>
+          <div className={`mt-2 rounded-xl p-3 ${proj.data.min_balance_cents < 0 ? "bg-expense/10 text-expense ring-1 ring-expense/20" : "bg-warn/15 text-ink"}`}>
             <p className="text-xs font-semibold uppercase">Saldo mínimo proyectado</p>
             <p className="text-lg font-bold">{formatCents(proj.data.min_balance_cents)}</p>
             {proj.data.min_balance_date && <p className="text-xs">el {fmtDate(proj.data.min_balance_date)}</p>}
           </div>
           {proj.data.points.length === 0 ? <Muted className="mt-2">No hay eventos pendientes en el horizonte.</Muted> : (
-            <ul className="mt-3 divide-y divide-slate-100 text-sm dark:divide-slate-800">
+            <ul className="mt-3 divide-y divide-line text-sm">
               {proj.data.points.map((p, i) => (
                 <li key={i} className={`flex items-center justify-between gap-2 py-2 ${p.date === proj.data!.min_balance_date && p.balance_cents === proj.data!.min_balance_cents ? "font-bold" : ""}`}>
-                  <div className="min-w-0"><p className="truncate">{p.event}</p><p className="text-xs text-slate-500">{fmtDate(p.date)}</p></div>
-                  <div className="shrink-0 text-right"><Money cents={p.amount_cents} tone /><p className="text-xs text-slate-500">→ {formatCents(p.balance_cents)}</p></div>
+                  <div className="min-w-0"><p className="truncate">{p.event}</p><p className="text-xs text-muted">{fmtDate(p.date)}</p></div>
+                  <div className="shrink-0 text-right"><Money cents={p.amount_cents} tone /><p className="text-xs text-muted">→ {formatCents(p.balance_cents)}</p></div>
                 </li>
               ))}
             </ul>
@@ -78,7 +78,7 @@ export default function Flujo() {
             {cats.data.map((c) => (
               <li key={c.category_id}>
                 <div className="flex justify-between text-sm"><span>{c.name}</span><Money cents={c.total_cents} /></div>
-                <div className="mt-1 h-2 rounded-full bg-slate-200 dark:bg-slate-700"><div className="h-2 rounded-full bg-rose-500" style={{ width: `${Math.max(1, pctOf(c.total_cents, maxC))}%` }} /></div>
+                <div className="mt-1 h-2 rounded-full bg-soft"><div className="h-2 rounded-full bg-expense" style={{ width: `${Math.max(1, pctOf(c.total_cents, maxC))}%` }} /></div>
               </li>
             ))}
           </ul>

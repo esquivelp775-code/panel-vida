@@ -36,14 +36,14 @@ function Detail() {
 
   return (
     <>
-      <PageTitle right={<Link href="/movimientos/" className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Volver</Link>}>Movimiento</PageTitle>
+      <PageTitle right={<Link href="/movimientos/" className="text-sm font-semibold text-income">Volver</Link>}>Movimiento</PageTitle>
       <Card className="mb-3">
-        <p className="text-sm text-slate-500">{KIND_LABEL[t.kind] || t.kind} · {fmtDate(t.occurred_on)}</p>
+        <p className="text-sm text-muted">{KIND_LABEL[t.kind] || t.kind} · {fmtDate(t.occurred_on)}</p>
         <p className="text-2xl font-bold"><Money cents={t.amount_cents} /></p>
         <p className="mt-1">{t.description}</p>
         {t.notes && <Muted>{t.notes}</Muted>}
         {t.voided_at && (
-          <p className="mt-2 rounded-lg bg-amber-50 p-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          <p className="mt-2 rounded-lg bg-warn/15 p-2 text-sm text-ink">
             Anulada el {fmtDate(t.voided_at)}. Motivo: {t.void_reason || "—"}.{" "}
             {t.reversed_by_id && <Link className="underline" href={`/movimientos/detalle/?id=${t.reversed_by_id}`}>Ver reversión</Link>}
           </p>
@@ -52,7 +52,7 @@ function Detail() {
       </Card>
       <H2>Asientos</H2>
       <Card className="mb-4">
-        <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+        <ul className="divide-y divide-line">
           {t.entries.map((e, i) => (
             <li key={i} className="flex justify-between py-2 text-sm">
               <span>{e.account_name}</span>
@@ -64,7 +64,7 @@ function Detail() {
       </Card>
       {canFix && (
         <>
-          <Link href={`/registrar/?fix=${t.id}`} className="mb-1 flex min-h-11 w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Corregir</Link>
+          <Link href={`/registrar/?fix=${t.id}`} className="mb-1 flex min-h-11 w-full items-center justify-center rounded-full bg-ink px-4 py-2 text-sm font-semibold text-onink hover:opacity-90">Corregir</Link>
           <Muted className="mb-3">Se crea el movimiento corregido y la original queda en el historial como anulada.</Muted>
         </>
       )}

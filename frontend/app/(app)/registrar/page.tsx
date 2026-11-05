@@ -214,7 +214,7 @@ export default function Registrar() {
 
   return (
     <>
-      <PageTitle right={<Link href="/" className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Cerrar</Link>}>Registrar</PageTitle>
+      <PageTitle right={<Link href="/" className="text-sm font-semibold text-income">Cerrar</Link>}>Registrar</PageTitle>
       {fixId ? (
         <Card className="mb-3">
           <p className="font-semibold">Corregir operación #{fixId}</p>
@@ -223,7 +223,7 @@ export default function Registrar() {
         </Card>
       ) : <Segmented value={mode} onChange={changeMode} options={MODES} />}
       {fixDone && orig && (
-        <div role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-800 ring-1 ring-red-200 dark:bg-red-950 dark:text-red-200 dark:ring-red-900">
+        <div role="alert" className="mb-3 rounded-[20px] bg-expense/10 p-3 text-sm text-expense ring-1 ring-expense/20">
           <p className="font-semibold">La operación corregida SÍ se creó (<Link className="underline" href={`/movimientos/detalle/?id=${fixDone.newId}`}>#{fixDone.newId}</Link>), pero no se pudo anular la original.</p>
           <p className="mt-1">{fixDone.err}</p>
           <p className="mt-1">Mientras tanto el movimiento está duplicado. Reintenta o anula manualmente la <Link className="underline" href={`/movimientos/detalle/?id=${orig.id}`}>original #{orig.id}</Link>.</p>
@@ -231,13 +231,13 @@ export default function Registrar() {
         </div>
       )}
       {fixDone ? null : needs.length > 0 ? (
-        <Empty title={`Primero crea ${needs.join(" y ")}`} hint="Se hace una sola vez en Cuentas." action={<Link href="/cuentas/" className="font-semibold text-emerald-700 underline">Ir a Cuentas</Link>} />
+        <Empty title={`Primero crea ${needs.join(" y ")}`} hint="Se hace una sola vez en Cuentas." action={<Link href="/cuentas/" className="font-semibold text-ink underline">Ir a Cuentas</Link>} />
       ) : (
         <form onSubmit={submit} noValidate>
           <Card>
             <ErrorBox message={error} />
             <Field label={mode === "loan_payment" ? "Capital (monto)" : "Monto"}>
-              <Input ref={amountRef} inputMode="decimal" autoComplete="off" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="text-2xl font-bold" aria-invalid={amount !== "" && cents === null} />
+              <Input ref={amountRef} inputMode="decimal" autoComplete="off" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="!min-h-20 !rounded-[28px] !border-0 !bg-transparent text-center !text-5xl num" aria-invalid={amount !== "" && cents === null} />
             </Field>
             {mode === "loan_payment" && (
               <Field label="Interés (opcional)"><Input inputMode="decimal" placeholder="0.00" value={interest} onChange={(e) => setInterest(e.target.value)} /></Field>

@@ -65,9 +65,9 @@ export default function Movimientos() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className={`truncate font-medium ${t.voided_at ? "line-through" : ""}`}>{t.description || KIND_LABEL[t.kind] || t.kind}</p>
-                        <p className="text-xs text-slate-500">{fmtDate(t.occurred_on)} · {KIND_LABEL[t.kind] || t.kind}{t.voided_at ? " · ANULADA" : ""}{t.reverses_id ? " · reversión" : ""}</p>
+                        <p className="text-xs text-muted">{fmtDate(t.occurred_on)} · {KIND_LABEL[t.kind] || t.kind}{t.voided_at ? " · ANULADA" : ""}{t.reverses_id ? " · reversión" : ""}</p>
                       </div>
-                      <p className={`shrink-0 font-semibold ${t.kind === "income" ? "text-emerald-700 dark:text-emerald-400" : ""}`}>
+                      <p className={`shrink-0 font-semibold ${t.kind === "income" ? "text-income" : ""}`}>
                         {t.kind === "income" ? "+" : out ? "−" : ""}<Money cents={t.amount_cents} />
                       </p>
                     </div>
@@ -81,7 +81,7 @@ export default function Movimientos() {
       {total > PAGE && (
         <div className="mt-4 flex items-center justify-between">
           <Btn variant="secondary" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>Anterior</Btn>
-          <span className="text-sm text-slate-500">{offset + 1}–{Math.min(offset + PAGE, total)} de {total}</span>
+          <span className="text-sm text-muted">{offset + 1}–{Math.min(offset + PAGE, total)} de {total}</span>
           <Btn variant="secondary" disabled={offset + PAGE >= total} onClick={() => setOffset(offset + PAGE)}>Siguiente</Btn>
         </div>
       )}

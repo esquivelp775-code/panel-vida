@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   icons: { icon: "/icon.svg", apple: "/icon-192.png" },
   appleWebApp: { capable: true, title: "Panel de Vida", statusBarStyle: "default" },
 };
-export const viewport: Viewport = { themeColor: "#059669", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = { themeColor: "#0E0E10", width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

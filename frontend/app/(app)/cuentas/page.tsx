@@ -102,7 +102,7 @@ function Categories({ accounts, reload }: { accounts: Account[]; reload: () => v
       <Segmented value={type} onChange={setType} options={[{ value: "expense", label: "Gastos" }, { value: "income", label: "Ingresos" }]} />
       {cats.length === 0 ? <Muted className="mb-3">Aún no hay categorías de {type === "expense" ? "gasto" : "ingreso"}.</Muted> : (
         <ul className="mb-3 flex flex-wrap gap-2">
-          {cats.map((c) => <li key={c.id} className="rounded-full bg-slate-100 px-3 py-1 text-sm dark:bg-slate-800">{c.name}</li>)}
+          {cats.map((c) => <li key={c.id} className="rounded-full bg-soft px-3 py-1 text-sm">{c.name}</li>)}
         </ul>
       )}
       <ErrorBox message={error} />
@@ -122,7 +122,7 @@ function Row({ a }: { a: Account }) {
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="truncate font-medium">{a.name}</p>
-              <p className="text-xs text-slate-500">{SUBTYPE_LABEL[a.subtype] || a.subtype}{a.subtype === "credit_card" && a.credit_limit_cents ? ` · límite ${formatCents(a.credit_limit_cents)}` : ""}</p>
+              <p className="text-xs text-muted">{SUBTYPE_LABEL[a.subtype] || a.subtype}{a.subtype === "credit_card" && a.credit_limit_cents ? ` · límite ${formatCents(a.credit_limit_cents)}` : ""}</p>
             </div>
             <p className="shrink-0 font-semibold"><Money cents={a.balance_cents} tone={a.account_class === "asset"} /></p>
           </div>

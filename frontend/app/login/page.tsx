@@ -28,8 +28,8 @@ export default function LoginPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
-      <h1 className="mb-1 text-3xl font-bold">Panel de Vida</h1>
-      <p className="mb-6 text-sm text-slate-500">Inicia sesión para ver tus finanzas.</p>
+      <h1 className="mb-1 text-4xl font-bold tracking-tight">Panel de Vida</h1>
+      <p className="mb-6 text-sm text-muted">Inicia sesión para ver tus finanzas.</p>
       <form onSubmit={submit}>
         <ErrorBox message={error} />
         <Field label="Correo electrónico"><Input type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} /></Field>

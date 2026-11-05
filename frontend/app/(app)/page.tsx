@@ -6,17 +6,18 @@ import { api, fmtDate, monthISO, monthRange, shiftMonth, todayISO, type Habit, t
 import { addDays, greeting } from "@/lib/calendar";
 import { useLoad, errMsg } from "@/lib/useLoad";
 import { Bar, Card, Empty, ErrorBox, H2, Money, Muted, pctOf, useToast } from "@/components/ui";
-import { CheckBox, CountMoney, DONUT_COLORS, Donut, Skeleton, Sparkline } from "@/components/anim";
+import { CheckBox, CountMoney, DONUT_COLORS, Donut, Ring, Skeleton, Sparkline } from "@/components/anim";
 import { formatCents } from "@/lib/money";
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const mlabel = (m: string) => MESES[Number(m.slice(5, 7)) - 1];
 
 function Chip({ label, cents, tone, i }: { label: string; cents: number; tone?: boolean; i: number }) {
+  const c = tone ? (cents < 0 ? "text-[#FF6369]" : cents > 0 ? "text-[#3DD68C]" : "") : "";
   return (
-    <div className="pv-in pv-press rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800" style={{ animationDelay: `${i * 90}ms` }}>
-      <p className="text-[11px] text-slate-500">{label}</p>
-      <p className="text-sm font-bold"><Money cents={cents} tone={tone} /></p>
+    <div className="pv-in rounded-[20px] bg-white/10 p-3" style={{ animationDelay: `${i * 40}ms` }}>
+      <p className="text-[11px] text-white/60">{label}</p>
+      <p className={`num mt-0.5 text-sm ${c}`}>{formatCents(cents)}</p>
     </div>
   );
 }
@@ -76,28 +77,29 @@ export default function Inicio() {
 
   return (
     <>
-      <div className="mb-3">
-        <h1 className="text-xl font-bold">{greeting(now.getHours())} 👋</h1>
-        <p className="text-sm capitalize text-slate-500">{dateStr}</p>
+      <div className="mb-5">
+        <h1 className="text-3xl font-bold tracking-tight">{greeting(now.getHours())} 👋</h1>
+        <p className="text-sm capitalize text-muted">{dateStr}</p>
       </div>
       <ErrorBox message={dash.error} onRetry={dash.reload} />
-      <Card className="mb-3 bg-gradient-to-br from-emerald-600 to-teal-700 !text-white !ring-0">
-        <p className="text-sm opacity-90">Dinero disponible</p>
+      <div className="lg:grid lg:grid-cols-2 lg:gap-4">
+      <Card className="pv-in mb-4 !bg-inverse !text-oninv !ring-0 lg:col-span-2">
+        <p className="text-sm text-white/60">Dinero disponible</p>
         <div className="flex items-end justify-between gap-2">
-          <p className="text-3xl font-bold"><CountMoney cents={d.available_cents} /></p>
+          <p className="text-4xl font-bold"><CountMoney cents={d.available_cents} /></p>
           {months.length > 1 && <Sparkline values={months.map((m) => m.net_cents)} color="#ffffff" />}
         </div>
-        <p className="mt-1 text-xs opacity-80">Neto de los últimos 6 meses</p>
+        <p className="mt-1 text-xs text-white/50">Neto de los últimos 6 meses</p>
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <Chip i={1} label="Deuda total" cents={d.total_debt_cents} />
+          <Chip i={2} label="Patrimonio" cents={d.net_worth_cents} tone />
+          <Chip i={3} label="Neto del mes" cents={d.month.net_cents} tone />
+        </div>
       </Card>
 
-      <div className="mb-4 grid grid-cols-3 gap-2">
-        <Chip i={0} label="Deuda total" cents={d.total_debt_cents} />
-        <Chip i={1} label="Patrimonio" cents={d.net_worth_cents} tone />
-        <Chip i={2} label="Neto del mes" cents={d.month.net_cents} tone />
-      </div>
-
+      <div className="mb-4">
       <H2>Gasto por categoría este mes</H2>
-      <Card className="mb-4">
+      <Card>
         {cats.loading && !cats.data ? <Skeleton className="h-36" /> : slices.length === 0 ? <Muted>Sin gastos este mes.</Muted> : (
           <div className="flex items-center gap-3">
             <Donut slices={slices} onPick={goCat} />
@@ -107,7 +109,7 @@ export default function Inicio() {
                   <button onClick={() => goCat(s.id)} className="flex min-h-8 w-full items-center gap-2 text-left text-xs">
                     <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />
                     <span className="min-w-0 flex-1 truncate">{s.label}</span>
-                    <span className="tabular-nums text-slate-500">{pctOf(s.value, catTotal)}%</span>
+                    <span className="tabular-nums text-muted">{pctOf(s.value, catTotal)}%</span>
                   </button>
                 </li>
               ))}
@@ -116,79 +118,91 @@ export default function Inicio() {
         )}
       </Card>
 
+      </div>
+      <div className="mb-4">
       <H2>Ingresos vs gastos (6 meses)</H2>
-      <Card className="mb-4">
+      <Card>
         {flow.loading && !flow.data ? <Skeleton className="h-32" /> : months.length === 0 ? <Muted>Sin datos.</Muted> : (
           <>
             <div className="flex h-32 items-end justify-between gap-2">
               {months.map((m) => (
                 <div key={m.month} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
                   <div className="flex h-full w-full items-end justify-center gap-1">
-                    <GrowBar pct={pctOf(m.income_cents, maxBar)} color="bg-emerald-500" title={`Ingresos ${formatCents(m.income_cents)}`} />
-                    <GrowBar pct={pctOf(m.expense_cents, maxBar)} color="bg-red-500" title={`Gastos ${formatCents(m.expense_cents)}`} />
+                    <GrowBar pct={pctOf(m.income_cents, maxBar)} color="bg-ink" title={`Ingresos ${formatCents(m.income_cents)}`} />
+                    <GrowBar pct={pctOf(m.expense_cents, maxBar)} color="bg-ink/25" title={`Gastos ${formatCents(m.expense_cents)}`} />
                   </div>
-                  <span className="text-[10px] uppercase text-slate-500">{mlabel(m.month)}</span>
+                  <span className="text-[10px] uppercase text-muted">{mlabel(m.month)}</span>
                 </div>
               ))}
             </div>
-            <p className="mt-2 text-xs text-slate-500"><span className="text-emerald-600">■</span> Ingresos · <span className="text-red-500">■</span> Gastos</p>
+            <p className="mt-2 text-xs text-muted"><span className="text-ink">■</span> Ingresos · <span className="text-ink/25">■</span> Gastos</p>
           </>
         )}
       </Card>
 
+      </div>
+
+      <div className="lg:col-span-2">
       <H2>Próximos 7 días</H2>
-      <Card className="mb-4">
-        {up.loading && !up.data ? <Skeleton className="h-16" /> : (up.data || []).length === 0 && tasks.length === 0 ? <Muted>Nada por vencer esta semana.</Muted> : (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-            {tasks.map((t) => {
+      <div className="mb-4">
+        {up.loading && !up.data ? <Skeleton className="h-16" /> : (up.data || []).length === 0 && tasks.length === 0 ? <Card><Muted>Nada por vencer esta semana.</Muted></Card> : (
+          <ul className="grid gap-2 lg:grid-cols-2">
+            {tasks.map((t, i) => {
               const done = doneIds.includes(t.id);
               return (
-                <li key={`t${t.id}`} className="flex items-center gap-1 py-0.5">
+                <li key={`t${t.id}`} className="pv-in flex items-center gap-1 rounded-[28px] bg-inverse p-2 pr-4 text-oninv" style={{ animationDelay: `${i * 40}ms` }}>
                   <CheckBox checked={done} onChange={() => !done && complete(t)} label={`Completar ${t.title}`} />
                   <div className={`min-w-0 flex-1 transition-opacity ${done ? "opacity-50" : ""}`}>
-                    <p className={`truncate text-sm font-medium ${done ? "line-through" : ""}`}>{t.title}</p>
-                    <p className={`text-xs ${t.due_date! < today && !done ? "font-semibold text-red-600" : "text-slate-500"}`}>Pendiente · {fmtDate(t.due_date!)}</p>
+                    <p className={`truncate text-sm font-semibold ${done ? "line-through" : ""}`}>{t.title}</p>
+                    <p className={`text-xs ${t.due_date! < today && !done ? "font-semibold text-[#FF6369]" : "text-white/60"}`}>Pendiente · {fmtDate(t.due_date!)}</p>
                   </div>
                 </li>
               );
             })}
             {(up.data || []).map((u, i) => (
-              <li key={`${u.source}-${u.ref_id}-${u.due_date}-${i}`} className="flex items-center justify-between py-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{u.name}</p>
-                  <p className={`text-xs ${u.overdue ? "font-semibold text-red-600" : "text-slate-500"}`}>{u.overdue ? "Vencido · " : ""}{fmtDate(u.due_date)}</p>
+              <li key={`${u.source}-${u.ref_id}-${u.due_date}-${i}`} className="pv-in flex items-center gap-3 rounded-[28px] bg-inverse p-3 pr-5 text-oninv" style={{ animationDelay: `${(tasks.length + i) * 40}ms` }}>
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4" /></svg>
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{u.name}</p>
+                  <p className={`text-xs ${u.overdue ? "font-semibold text-[#FF6369]" : "text-white/60"}`}>{u.overdue ? "Vencido · " : ""}{fmtDate(u.due_date)}</p>
                 </div>
-                <p className={`text-sm font-semibold ${u.direction === "inflow" ? "text-emerald-700 dark:text-emerald-400" : ""}`}>{u.direction === "inflow" ? "+" : "−"}<Money cents={u.amount_cents} /></p>
+                <p className={`num text-sm ${u.direction === "inflow" ? "text-[#3DD68C]" : ""}`}>{u.direction === "inflow" ? "+" : "−"}<Money cents={u.amount_cents} /></p>
               </li>
             ))}
           </ul>
         )}
-      </Card>
+      </div>
 
       <H2>Hábitos de hoy</H2>
-      {habitsL.loading && !habitsL.data ? <Skeleton className="mb-4 h-12" /> : habits.length === 0 ? (
-        <div className="mb-4"><Empty title="Sin hábitos" hint="Crea uno para seguir tu racha." action={<Link href="/vida/" className="font-semibold text-emerald-700 underline">Ir a Vida</Link>} /></div>
+      {habitsL.loading && !habitsL.data ? <Skeleton className="mb-4 h-24" /> : habits.length === 0 ? (
+        <div className="mb-4"><Empty title="Sin hábitos" hint="Crea uno para seguir tu racha." action={<Link href="/vida/" className="font-semibold text-ink underline">Ir a Vida</Link>} /></div>
       ) : (
-        <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1">
+        <div className="hide-scroll -mx-4 mb-4 flex gap-3 overflow-x-auto px-4 pb-2 lg:mx-0 lg:px-0">
           {habits.map((h) => (
             <button key={h.id} onClick={() => toggle(h)} aria-pressed={h.done_today}
-              className={`pv-press flex min-h-11 shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium ring-1 transition-colors ${h.done_today ? "bg-emerald-600 text-white ring-emerald-600" : "bg-white ring-slate-300 dark:bg-slate-900 dark:ring-slate-700"}`}>
-              <span className={popId === h.id ? "pv-pop inline-block" : "inline-block"}>{h.emoji}</span>
-              <span>{h.name}</span>
-              {h.streak_days > 0 && <span className="text-xs">🔥{h.streak_days}</span>}
+              className={`pv-press flex w-28 shrink-0 flex-col items-center gap-2 rounded-[28px] p-4 text-center shadow-soft ring-1 ${h.done_today ? "bg-ink text-onink ring-ink" : "bg-surface ring-line"}`}>
+              <Ring size={56} stroke={5} pct={Math.round((h.week_count * 100) / Math.max(1, h.target_per_week))} color={h.done_today ? "currentColor" : "var(--ink)"}>
+                <span className={`text-xl ${popId === h.id ? "pv-pop inline-block" : "inline-block"}`}>{h.emoji}</span>
+              </Ring>
+              <span className="w-full truncate text-xs font-semibold">{h.name}</span>
+              <span className={`text-[11px] ${h.done_today ? "opacity-70" : "text-muted"}`}>{h.week_count}/{h.target_per_week}{h.streak_days > 0 ? ` · 🔥${h.streak_days}` : ""}</span>
             </button>
           ))}
         </div>
       )}
+      </div>
+      </div>
 
       <H2>Tarjetas</H2>
       {d.cards.length === 0 ? (
-        <Empty title="Sin tarjetas" hint="Agrega una tarjeta de crédito en Cuentas." action={<Link href="/cuentas/" className="font-semibold text-emerald-700 underline">Ir a Cuentas</Link>} />
+        <Empty title="Sin tarjetas" hint="Agrega una tarjeta de crédito en Cuentas." action={<Link href="/cuentas/" className="font-semibold text-ink underline">Ir a Cuentas</Link>} />
       ) : (
-        <div className="mb-3 space-y-2">
+        <div className="mb-3 space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
           {d.cards.map((c) => (
             <Card key={c.id}>
-              <div className="flex items-baseline justify-between"><p className="font-semibold">{c.name}{c.overdue && <span className="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">Vencido</span>}</p><p className="font-bold"><Money cents={c.owed_cents} /></p></div>
+              <div className="flex items-baseline justify-between"><p className="font-semibold">{c.name}{c.overdue && <span className="ml-2 rounded-full bg-expense px-2 py-0.5 text-xs font-semibold text-white">Vencido</span>}</p><p className="num"><Money cents={c.owed_cents} /></p></div>
               {c.credit_limit_cents != null && (
                 <>
                   <div className="my-2"><Bar pct={pctOf(c.owed_cents, c.credit_limit_cents)} over={c.owed_cents > c.credit_limit_cents} label="Uso del límite" /></div>
@@ -198,7 +212,7 @@ export default function Inicio() {
               {c.next_due_date && (
                 <Muted>Próximo pago: {fmtDate(c.next_due_date)}{c.statement_due_cents != null ? ` · para no generar intereses ${formatCents(c.statement_due_cents)}` : ""}</Muted>
               )}
-              {(c.minimum_due_cents ?? 0) > 0 && <p className="text-xs text-slate-500" title="Estimación: no incluye intereses ni IVA">Pago mínimo (estimado) {formatCents(c.minimum_due_cents ?? 0)} · Estimación: no incluye intereses ni IVA</p>}
+              {(c.minimum_due_cents ?? 0) > 0 && <p className="text-xs text-muted" title="Estimación: no incluye intereses ni IVA">Pago mínimo (estimado) {formatCents(c.minimum_due_cents ?? 0)} · Estimación: no incluye intereses ni IVA</p>}
               {(c.deferred_cents ?? 0) > 0 && <Muted>MSI por facturar {formatCents(c.deferred_cents ?? 0)}</Muted>}
             </Card>
           ))}
@@ -212,5 +226,5 @@ export default function Inicio() {
 function GrowBar({ pct, color, title }: { pct: number; color: string; title: string }) {
   const [h, setH] = useState(0);
   useEffect(() => { const id = requestAnimationFrame(() => requestAnimationFrame(() => setH(pct))); return () => cancelAnimationFrame(id); }, [pct]);
-  return <div title={title} className={`w-4 rounded-t ${color}`} style={{ height: `${Math.max(h, pct > 0 ? 2 : 0)}%`, transition: "height .8s cubic-bezier(.2,.8,.2,1)" }} />;
+  return <div title={title} className={`w-4 rounded-full ${color}`} style={{ height: `${Math.max(h, pct > 0 ? 2 : 0)}%`, transition: "height .8s cubic-bezier(.22,1,.36,1)" }} />;
 }

@@ -1,12 +1,36 @@
 @import "tailwindcss";
 
-:root { color-scheme: light dark; }
-html, body { background: #f4f6f8; color: #0f172a; }
-@media (prefers-color-scheme: dark) {
-  html, body { background: #0b1220; color: #e5e7eb; }
+/* Tokens de diseño: monocromo, con color semántico sólo para cifras. */
+:root {
+  color-scheme: light dark;
+  --canvas: #F2F2F4; --surface: #FFFFFF; --ink: #0E0E10; --on-ink: #FFFFFF; --muted: #6B6B73;
+  --line: rgba(0,0,0,.06); --soft: rgba(0,0,0,.05); --inverse: #111113; --on-inverse: #FFFFFF;
+  --income: #12A150; --expense: #E5484D; --warning: #F5A524;
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06);
+  --ease: cubic-bezier(.22,1,.36,1);
 }
-body { -webkit-tap-highlight-color: transparent; padding-bottom: env(safe-area-inset-bottom); }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #0B0B0C; --surface: #161618; --ink: #F5F5F7; --on-ink: #0E0E10; --muted: #9A9AA3;
+    --line: rgba(255,255,255,.08); --soft: rgba(255,255,255,.07); --inverse: #1F1F23; --on-inverse: #FFFFFF;
+    --income: #3DD68C; --expense: #FF6369; --warning: #FFB224;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+  }
+}
+@theme inline {
+  --color-canvas: var(--canvas); --color-surface: var(--surface); --color-ink: var(--ink); --color-onink: var(--on-ink);
+  --color-muted: var(--muted); --color-line: var(--line); --color-soft: var(--soft);
+  --color-inverse: var(--inverse); --color-oninv: var(--on-inverse);
+  --color-income: var(--income); --color-expense: var(--expense); --color-warn: var(--warning);
+  --font-sans: ui-sans-serif, -apple-system, "SF Pro Display", "Segoe UI", Inter, Roboto, system-ui, sans-serif;
+  --shadow-soft: var(--shadow);
+  --radius-card: 28px; --radius-tile: 20px;
+}
+html, body { background: var(--canvas); color: var(--ink); font-family: var(--font-sans); }
+body { -webkit-tap-highlight-color: transparent; padding-bottom: env(safe-area-inset-bottom); letter-spacing: -0.005em; }
 input, select, textarea, button { font: inherit; }
+.num { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; font-weight: 700; }
+.hide-scroll { scrollbar-width: none; } .hide-scroll::-webkit-scrollbar { display: none; }
 
 /* ---------- Animaciones (todas se desactivan con prefers-reduced-motion) ---------- */
 @keyframes pv-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -18,18 +42,18 @@ input, select, textarea, button { font: inherit; }
 @keyframes pv-slide-l { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
 @keyframes pv-slide-r { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
 @keyframes pv-check { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
-.pv-page { animation: pv-fade .28s ease-out both; }
-.pv-in { opacity: 0; animation: pv-fade .45s ease-out forwards; }
-.pv-sheet { animation: pv-slide-up .28s cubic-bezier(.2,.8,.2,1) both; }
-.pv-backdrop { animation: pv-fade-bg .2s ease-out both; }
+.pv-page { animation: pv-fade .28s var(--ease) both; }
+.pv-in { opacity: 0; animation: pv-fade .28s var(--ease) forwards; }
+.pv-sheet { animation: pv-slide-up .28s var(--ease) both; }
+.pv-backdrop { animation: pv-fade-bg .2s var(--ease) both; }
 .pv-skel { background: linear-gradient(90deg, rgba(148,163,184,.18) 0%, rgba(148,163,184,.38) 50%, rgba(148,163,184,.18) 100%); background-size: 200px 100%; background-repeat: no-repeat; background-color: rgba(148,163,184,.18); animation: pv-shimmer 1.2s infinite linear; }
-.pv-pop { animation: pv-pop .35s ease-out; }
-.pv-draw { stroke-dasharray: var(--len, 300); stroke-dashoffset: var(--len, 300); animation: pv-draw .9s ease-out .1s forwards; }
-.pv-check path { stroke-dasharray: 24; animation: pv-check .3s ease-out forwards; }
-.pv-slide-l { animation: pv-slide-l .25s ease-out both; }
-.pv-slide-r { animation: pv-slide-r .25s ease-out both; }
-.pv-press { transition: transform .12s ease; }
-.pv-press:active { transform: scale(.98); }
+.pv-pop { animation: pv-pop .35s var(--ease); }
+.pv-draw { stroke-dasharray: var(--len, 300); stroke-dashoffset: var(--len, 300); animation: pv-draw .9s var(--ease) .1s forwards; }
+.pv-check path { stroke-dasharray: 24; animation: pv-check .3s var(--ease) forwards; }
+.pv-slide-l { animation: pv-slide-l .25s var(--ease) both; }
+.pv-slide-r { animation: pv-slide-r .25s var(--ease) both; }
+.pv-press { transition: transform .16s var(--ease), background-color .16s var(--ease); }
+.pv-press:active { transform: scale(.97); }
 @media (prefers-reduced-motion: reduce) {
   .pv-page, .pv-in, .pv-sheet, .pv-backdrop, .pv-skel, .pv-pop, .pv-slide-l, .pv-slide-r, .pv-check path { animation: none !important; opacity: 1 !important; transform: none !important; }
   .pv-draw { animation: none !important; stroke-dashoffset: 0 !important; }

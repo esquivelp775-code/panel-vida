@@ -20,7 +20,7 @@ export default function Mas() {
       <div className="space-y-2">
         {ITEMS.map((i) => (
           <Link key={i.href} href={i.href} className="block">
-            <Card><p className="font-semibold">{i.t}</p><p className="text-sm text-slate-500">{i.d}</p></Card>
+            <Card><p className="font-semibold">{i.t}</p><p className="text-sm text-muted">{i.d}</p></Card>
           </Link>
         ))}
       </div>

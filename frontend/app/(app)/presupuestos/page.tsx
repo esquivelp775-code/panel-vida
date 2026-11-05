@@ -54,10 +54,10 @@ export default function Presupuestos() {
             return (
               <li key={b.id}>
                 <Card>
-                  <div className="flex justify-between"><p className="font-medium">{b.category_name}</p><button className="text-xs text-red-600 underline" onClick={() => setDel(b)}>Eliminar</button></div>
+                  <div className="flex justify-between"><p className="font-medium">{b.category_name}</p><button className="text-xs text-expense underline" onClick={() => setDel(b)}>Eliminar</button></div>
                   <div className="my-2"><Bar pct={pctOf(b.spent_cents, b.amount_cents)} over={over} label={`Gastado de ${b.category_name}`} /></div>
                   <p className="text-sm">Gastado <b>{formatCents(b.spent_cents)}</b> de {formatCents(b.amount_cents)}</p>
-                  <p className={`text-sm font-semibold ${over ? "text-red-600" : "text-emerald-700 dark:text-emerald-400"}`}>{over ? "Excedido por " : "Restan "}<Money cents={Math.abs(b.remaining_cents)} /></p>
+                  <p className={`text-sm font-semibold ${over ? "text-expense" : "text-income"}`}>{over ? "Excedido por " : "Restan "}<Money cents={Math.abs(b.remaining_cents)} /></p>
                 </Card>
               </li>
             );

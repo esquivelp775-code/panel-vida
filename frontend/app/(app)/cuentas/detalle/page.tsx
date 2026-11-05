@@ -108,18 +108,18 @@ function Detail() {
 
   return (
     <>
-      <PageTitle right={<Link href="/cuentas/" className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Volver</Link>}>{a.name}</PageTitle>
+      <PageTitle right={<Link href="/cuentas/" className="text-sm font-semibold text-income">Volver</Link>}>{a.name}</PageTitle>
       <Card className="mb-3">
-        <p className="text-sm text-slate-500">{SUBTYPE_LABEL[a.subtype] || a.subtype}{a.archived_at ? " · archivada" : ""}</p>
+        <p className="text-sm text-muted">{SUBTYPE_LABEL[a.subtype] || a.subtype}{a.archived_at ? " · archivada" : ""}</p>
         <p className="text-2xl font-bold"><Money cents={a.balance_cents} /></p>
         <Muted>{a.account_class === "liability" ? "Lo que debes" : "Saldo según el libro"}</Muted>
         {a.subtype === "credit_card" && (
           <Muted className="mt-1">Límite {a.credit_limit_cents != null ? formatCents(a.credit_limit_cents) : "—"} · corte día {a.statement_day ?? "—"} · pago día {a.due_day ?? "—"}</Muted>
         )}
         <div className="mt-2 flex items-center gap-4">
-          <Link href={`/movimientos/?account=${a.id}`} className="text-sm font-semibold text-emerald-700 underline dark:text-emerald-400">Ver movimientos</Link>
-          {reconcilable && !a.archived_at && <Link href={`/importar/?account=${a.id}`} className="text-sm font-semibold text-emerald-700 underline dark:text-emerald-400">Importar estado</Link>}
-          {!a.archived_at && !a.is_system && <button type="button" onClick={() => setEditOpen(true)} className="min-h-11 text-sm font-semibold text-emerald-700 underline dark:text-emerald-400">Editar</button>}
+          <Link href={`/movimientos/?account=${a.id}`} className="text-sm font-semibold text-ink underline">Ver movimientos</Link>
+          {reconcilable && !a.archived_at && <Link href={`/importar/?account=${a.id}`} className="text-sm font-semibold text-ink underline">Importar estado</Link>}
+          {!a.archived_at && !a.is_system && <button type="button" onClick={() => setEditOpen(true)} className="min-h-11 text-sm font-semibold text-ink underline">Editar</button>}
         </div>
       </Card>
       {isCardAcc && (<>
@@ -135,9 +135,9 @@ function Detail() {
                     <p className="min-w-0 truncate font-medium">{p.description || "Compra a meses"}</p>
                     <p className="shrink-0 font-semibold"><Money cents={p.total_cents} /></p>
                   </div>
-                  <p className="text-xs text-slate-500">{p.billed_count} de {p.months} mensualidades · {formatCents(p.installment_cents)} c/u</p>
-                  <p className="text-xs text-slate-500">Restan {formatCents(p.remaining_cents)}{p.next_closing ? ` · próximo corte ${fmtDate(p.next_closing)}` : ""}</p>
-                  <Link href={`/movimientos/detalle/?id=${p.transaction_id}`} className="text-xs font-semibold text-emerald-700 underline dark:text-emerald-400">Ver compra</Link>
+                  <p className="text-xs text-muted">{p.billed_count} de {p.months} mensualidades · {formatCents(p.installment_cents)} c/u</p>
+                  <p className="text-xs text-muted">Restan {formatCents(p.remaining_cents)}{p.next_closing ? ` · próximo corte ${fmtDate(p.next_closing)}` : ""}</p>
+                  <Link href={`/movimientos/detalle/?id=${p.transaction_id}`} className="text-xs font-semibold text-ink underline">Ver compra</Link>
                 </Card>
               </li>
             ))}
@@ -160,10 +160,10 @@ function Detail() {
             <Btn type="submit" className="w-full" disabled={busy}>{busy ? "Calculando…" : adjust ? "Conciliar y ajustar" : "Comparar"}</Btn>
           </form>
           {res && (
-            <div className="mt-3 rounded-xl bg-slate-100 p-3 text-sm dark:bg-slate-800">
+            <div className="mt-3 rounded-[20px] bg-soft p-3 text-sm">
               <p>Libro: <b>{formatCents(res.ledger_balance_cents)}</b></p>
               <p>Estado de cuenta: <b>{formatCents(res.statement_balance_cents)}</b></p>
-              <p className={res.difference_cents === 0 ? "font-semibold text-emerald-700" : "font-semibold text-red-600"}>
+              <p className={res.difference_cents === 0 ? "font-semibold text-ink" : "font-semibold text-expense"}>
                 Diferencia: {formatCents(res.difference_cents)} {res.difference_cents === 0 ? "· conciliada" : ""}
               </p>
               {res.adjustment_transaction_id && <p>Se creó el ajuste <Link className="underline" href={`/movimientos/detalle/?id=${res.adjustment_transaction_id}`}>#{res.adjustment_transaction_id}</Link>.</p>}

@@ -1,4 +1,5 @@
 "use client";
+import { createPortal } from "react-dom";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { formatCents } from "@/lib/money";
 
@@ -30,11 +31,11 @@ export function useCountUp(target: number, ms = 600): number {
 
 export function CountMoney({ cents, className = "" }: { cents: number; className?: string }) {
   const v = useCountUp(cents);
-  return <span className={`tabular-nums ${className}`}>{formatCents(v)}</span>;
+  return <span className={`num ${className}`}>{formatCents(v)}</span>;
 }
 
 export function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`pv-skel rounded-xl ${className}`} aria-hidden="true" />;
+  return <div className={`pv-skel rounded-[28px] ${className}`} aria-hidden="true" />;
 }
 
 /** Línea con animación de trazo. Valores enteros sólo para dibujar. */
@@ -54,7 +55,7 @@ export function Sparkline({ values, w = 120, h = 36, color = "#34d399" }: { valu
 }
 
 /** Anillo de progreso animado (0-100). */
-export function Ring({ pct, size = 44, stroke = 5, color = "#10b981", children }: { pct: number; size?: number; stroke?: number; color?: string; children?: ReactNode }) {
+export function Ring({ pct, size = 44, stroke = 5, color = "var(--ink)", children }: { pct: number; size?: number; stroke?: number; color?: string; children?: ReactNode }) {
   const r = (size - stroke) / 2, c = 2 * Math.PI * r;
   const [p, setP] = useState(0);
   useEffect(() => { const id = requestAnimationFrame(() => setP(Math.max(0, Math.min(100, pct)))); return () => cancelAnimationFrame(id); }, [pct]);
@@ -62,14 +63,14 @@ export function Ring({ pct, size = 44, stroke = 5, color = "#10b981", children }
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeOpacity=".15" strokeWidth={stroke} />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - p / 100)} style={{ transition: "stroke-dashoffset .8s cubic-bezier(.2,.8,.2,1)" }} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - p / 100)} style={{ transition: "stroke-dashoffset .8s cubic-bezier(.22,1,.36,1)" }} />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center text-[11px] font-bold">{children}</div>
     </div>
   );
 }
 
-export const DONUT_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#14b8a6", "#ec4899", "#64748b"];
+export const DONUT_COLORS = ["var(--ink)", "#4A4A52", "#6B6B73", "#8E8E96", "#A9A9B1", "#C2C2C9", "#D6D6DB", "#E6E6EA"];
 
 /** Dona animada; cada porción es un trazo con dasharray (animado por transición). */
 export function Donut({ slices, size = 140, onPick }: { slices: { id: number; label: string; value: number }[]; size?: number; onPick?: (id: number) => void }) {
@@ -103,16 +104,19 @@ export function Sheet({ open, title, onClose, children }: { open: boolean; title
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   }, [open, onClose]);
-  if (!open) return null;
-  return (
-    <div className="pv-backdrop fixed inset-0 z-50 flex items-end justify-center bg-black/50" role="dialog" aria-modal="true" aria-label={title} onClick={onClose}>
-      <div className="pv-sheet max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-4 pb-8 dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
-        <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-300 dark:bg-slate-700" />
+  if (!open || typeof document === "undefined") return null;
+  // Portal a <body>: el contenedor animado de la página crea su propio contexto de apilamiento y,
+  // sin portal, la barra de navegación flotante tapaba los botones del diálogo.
+  return createPortal(
+    <div className="pv-backdrop fixed inset-0 z-[70] flex items-end justify-center bg-black/40 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={title} onClick={onClose}>
+      <div className="pv-sheet max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-t-[28px] bg-surface p-5 pb-8 shadow-soft" onClick={(e) => e.stopPropagation()}>
+        <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-ink/20" />
         <div className="mb-3 flex items-center justify-between"><h3 className="text-lg font-bold capitalize">{title}</h3>
-          <button onClick={onClose} aria-label="Cerrar" className="min-h-11 min-w-11 text-xl text-slate-500">✕</button></div>
+          <button onClick={onClose} aria-label="Cerrar" className="min-h-11 min-w-11 text-xl text-muted">✕</button></div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -120,9 +124,9 @@ export function Sheet({ open, title, onClose, children }: { open: boolean; title
 export function CheckBox({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
   return (
     <button type="button" role="checkbox" aria-checked={checked} aria-label={label} onClick={onChange} className="flex h-11 w-11 shrink-0 items-center justify-center">
-      <span className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors duration-200 ${checked ? "border-emerald-500 bg-emerald-500" : "border-slate-400"} ${checked ? "pv-pop" : ""}`}>
+      <span className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors duration-200 ${checked ? "border-current bg-current" : "border-current/40"} ${checked ? "pv-pop" : ""}`}>
         {checked && (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="pv-check"><path d="M4 12l5 5L20 6" /></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="pv-check mix-blend-difference"><path d="M4 12l5 5L20 6" /></svg>
         )}
       </span>
     </button>

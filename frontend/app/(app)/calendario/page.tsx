@@ -10,18 +10,18 @@ import { Sheet, Skeleton } from "@/components/anim";
 
 const DOW = ["L", "M", "M", "J", "V", "S", "D"];
 const BADGE: Record<string, [string, string]> = {
-  paid: ["Pagado", "bg-emerald-100 text-emerald-800"], overdue: ["Vencido", "bg-red-100 text-red-800"],
-  done: ["Hecho", "bg-emerald-100 text-emerald-800"], pending: ["Pendiente", "bg-slate-200 text-slate-700"],
+  paid: ["Pagado", "bg-income/15 text-income"], overdue: ["Vencido", "bg-expense/15 text-expense"],
+  done: ["Hecho", "bg-income/15 text-income"], pending: ["Pendiente", "bg-soft text-muted"],
 };
 
 function dots(d: CalDay | undefined): string[] {
   if (!d) return [];
   const c: string[] = [];
-  if (d.income_cents > 0) c.push("bg-emerald-500");
-  if (d.expense_cents > 0) c.push("bg-red-500");
-  if (d.events.some((e) => e.kind === "obligation" || e.kind === "card")) c.push("bg-amber-500");
-  if (d.events.some((e) => e.kind === "task")) c.push("bg-blue-500");
-  if (d.habits_done > 0) c.push("bg-purple-500");
+  if (d.income_cents > 0) c.push("bg-ink");
+  if (d.expense_cents > 0) c.push("bg-expense");
+  if (d.events.some((e) => e.kind === "obligation" || e.kind === "card")) c.push("bg-warn");
+  if (d.events.some((e) => e.kind === "task")) c.push("bg-muted");
+  if (d.habits_done > 0) c.push("bg-muted/50");
   return c;
 }
 
@@ -49,12 +49,12 @@ export default function Calendario() {
         <Btn variant="ghost" onClick={() => go(1)} aria-label="Mes siguiente">›</Btn>
       </div>
       <div className="mb-3 flex justify-center gap-4 text-sm">
-        <span className="text-emerald-700 dark:text-emerald-400">Ingresos <b><Money cents={cal.data?.totals.income_cents ?? 0} /></b></span>
-        <span className="text-red-600 dark:text-red-400">Gastos <b><Money cents={cal.data?.totals.expense_cents ?? 0} /></b></span>
+        <span className="text-income">Ingresos <b><Money cents={cal.data?.totals.income_cents ?? 0} /></b></span>
+        <span className="text-expense">Gastos <b><Money cents={cal.data?.totals.expense_cents ?? 0} /></b></span>
       </div>
       <ErrorBox message={cal.error} onRetry={cal.reload} />
       <div key={month} className={dir === "r" ? "pv-slide-r" : "pv-slide-l"}>
-        <div className="mb-1 grid grid-cols-7 text-center text-xs font-semibold text-slate-500">{DOW.map((d, i) => <span key={i}>{d}</span>)}</div>
+        <div className="mb-1 grid grid-cols-7 text-center text-xs font-semibold text-muted">{DOW.map((d, i) => <span key={i}>{d}</span>)}</div>
         {cal.loading && !cal.data ? <Skeleton className="h-72" /> : (
           <div className="grid grid-cols-7 gap-1">
             {grid.flat().map((c) => {
@@ -62,17 +62,17 @@ export default function Calendario() {
               const isToday = c.date === today;
               return (
                 <button key={c.date} disabled={!c.inMonth} onClick={() => setSel(c.date)} aria-label={c.date}
-                  className={`pv-press flex h-14 flex-col items-center justify-start gap-1 rounded-xl pt-1.5 text-sm ${!c.inMonth ? "opacity-0" : "bg-white ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800"} ${isToday ? "!bg-emerald-600 font-bold text-white !ring-emerald-600" : ""}`}>
+                  className={`pv-press flex h-14 flex-col items-center justify-start gap-1 rounded-[18px] pt-1.5 text-sm ${!c.inMonth ? "opacity-0" : "bg-surface ring-1 ring-line"} ${isToday ? "!bg-ink font-bold text-onink !ring-0" : ""}`}>
                   <span>{Number(c.date.slice(8))}</span>
-                  <span className="flex gap-0.5">{dots(d).map((k, i) => <span key={i} className={`h-1.5 w-1.5 rounded-full ${k} ${isToday ? "ring-1 ring-white" : ""}`} />)}</span>
+                  <span className="flex gap-0.5">{dots(d).map((k, i) => <span key={i} className={`h-1.5 w-1.5 rounded-full ${k} `} />)}</span>
                 </button>
               );
             })}
           </div>
         )}
       </div>
-      <p className="mt-3 text-center text-[11px] text-slate-500">
-        <span className="text-emerald-500">●</span> ingreso <span className="text-red-500">●</span> gasto <span className="text-amber-500">●</span> vencimiento <span className="text-blue-500">●</span> pendiente <span className="text-purple-500">●</span> hábitos
+      <p className="mt-3 text-center text-[11px] text-muted">
+        <span className="text-income">●</span> ingreso <span className="text-expense">●</span> gasto <span className="text-warn">●</span> vencimiento <span className="text-muted">●</span> pendiente <span className="text-muted/50">●</span> hábitos
       </p>
       <Sheet open={!!sel} title={sel ? new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${sel}T12:00:00`)) : ""} onClose={() => setSel(null)}>
         {sel && <DayDetail date={sel} day={selDay} onChanged={() => { cal.reload(); }} toast={toast} />}
@@ -88,7 +88,7 @@ function EventRow({ e }: { e: CalEvent }) {
     <li className="flex items-center gap-2 py-2">
       <span aria-hidden="true">{icon}</span>
       <p className="min-w-0 flex-1 truncate text-sm font-medium">{e.title}</p>
-      {e.amount_cents != null && <span className={`text-sm font-semibold ${e.direction === "inflow" ? "text-emerald-700" : ""}`}>{e.direction === "inflow" ? "+" : "−"}{formatCents(e.amount_cents)}</span>}
+      {e.amount_cents != null && <span className={`text-sm font-semibold ${e.direction === "inflow" ? "text-ink" : ""}`}>{e.direction === "inflow" ? "+" : "−"}{formatCents(e.amount_cents)}</span>}
       <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${cls}`}>{label}</span>
     </li>
   );
@@ -108,12 +108,12 @@ function DayDetail({ date, day, onChanged, toast }: { date: string; day: CalDay 
   return (
     <div>
       <div className="mb-3 flex gap-4 text-sm">
-        <span className="text-emerald-700 dark:text-emerald-400">Ingresos <b><Money cents={day?.income_cents ?? 0} /></b></span>
-        <span className="text-red-600 dark:text-red-400">Gastos <b><Money cents={day?.expense_cents ?? 0} /></b></span>
+        <span className="text-income">Ingresos <b><Money cents={day?.income_cents ?? 0} /></b></span>
+        <span className="text-expense">Gastos <b><Money cents={day?.expense_cents ?? 0} /></b></span>
       </div>
-      {day && day.events.length > 0 ? <ul className="divide-y divide-slate-100 dark:divide-slate-800">{day.events.map((e, i) => <EventRow key={`${e.kind}${e.ref_id}${i}`} e={e} />)}</ul> : <Muted>Sin eventos este día.</Muted>}
+      {day && day.events.length > 0 ? <ul className="divide-y divide-line">{day.events.map((e, i) => <EventRow key={`${e.kind}${e.ref_id}${i}`} e={e} />)}</ul> : <Muted>Sin eventos este día.</Muted>}
       {day && day.habits_done > 0 && <Muted className="mt-2">💜 Hábitos hechos: {day.habits_done}</Muted>}
-      <Link href={`/movimientos/?date_from=${date}&date_to=${date}`} className="mt-3 block text-sm font-semibold text-emerald-700 underline dark:text-emerald-400">Ver movimientos del día</Link>
+      <Link href={`/movimientos/?date_from=${date}&date_to=${date}`} className="mt-3 block text-sm font-semibold text-ink underline">Ver movimientos del día</Link>
       {adding ? (
         <form onSubmit={add} className="mt-3 flex gap-2">
           <Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="¿Qué hay que hacer?" maxLength={200} />
@@ -122,7 +122,7 @@ function DayDetail({ date, day, onChanged, toast }: { date: string; day: CalDay 
       ) : (
         <div className="mt-3 flex gap-2">
           <Btn variant="secondary" className="flex-1" onClick={() => setAdding(true)}>+ Pendiente para este día</Btn>
-          <Link href={`/registrar/?date=${date}`} className="pv-press flex min-h-11 flex-1 items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">+ Movimiento</Link>
+          <Link href={`/registrar/?date=${date}`} className="pv-press flex min-h-11 flex-1 items-center justify-center rounded-full bg-ink px-4 py-2 text-sm font-semibold text-onink">+ Movimiento</Link>
         </div>
       )}
     </div>

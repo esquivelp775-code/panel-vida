@@ -139,17 +139,17 @@ export default function Deudas() {
       <H2>Lo que debes</H2>
       {liabs.length === 0 ? <Empty title="Sin deudas registradas" hint="Tarjetas y préstamos aparecerán aquí." /> : (
         <Card className="mb-4">
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="divide-y divide-line">
             {liabs.map((a) => {
               const ci = cardInfo.get(a.id);
               return (
                 <li key={a.id} className="flex items-center justify-between gap-2 py-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium">{a.name}{ci?.overdue && <span className="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">Vencido</span>}</p>
-                    <p className="text-xs text-slate-500">{SUBTYPE_LABEL[a.subtype]}</p>
-                    {ci?.statement_due_cents != null && <p className="text-xs text-slate-500">Pago para no generar intereses {formatCents(ci.statement_due_cents)}</p>}
-                    {(ci?.minimum_due_cents ?? 0) > 0 && <p className="text-xs text-slate-500" title="Estimación: no incluye intereses ni IVA">Pago mínimo (estimado) {formatCents(ci?.minimum_due_cents ?? 0)} · Estimación: no incluye intereses ni IVA</p>}
-                    {(ci?.deferred_cents ?? 0) > 0 && <p className="text-xs text-slate-500">MSI por facturar {formatCents(ci?.deferred_cents ?? 0)}</p>}
+                    <p className="text-sm font-medium">{a.name}{ci?.overdue && <span className="ml-2 rounded-full bg-expense px-2 py-0.5 text-xs font-semibold text-white">Vencido</span>}</p>
+                    <p className="text-xs text-muted">{SUBTYPE_LABEL[a.subtype]}</p>
+                    {ci?.statement_due_cents != null && <p className="text-xs text-muted">Pago para no generar intereses {formatCents(ci.statement_due_cents)}</p>}
+                    {(ci?.minimum_due_cents ?? 0) > 0 && <p className="text-xs text-muted" title="Estimación: no incluye intereses ni IVA">Pago mínimo (estimado) {formatCents(ci?.minimum_due_cents ?? 0)} · Estimación: no incluye intereses ni IVA</p>}
+                    {(ci?.deferred_cents ?? 0) > 0 && <p className="text-xs text-muted">MSI por facturar {formatCents(ci?.deferred_cents ?? 0)}</p>}
                   </div>
                   <p className="shrink-0 font-semibold"><Money cents={a.balance_cents} /></p>
                 </li>
@@ -162,12 +162,12 @@ export default function Deudas() {
       <H2>Próximos 30 días</H2>
       {!up.data || up.data.length === 0 ? <Empty title="Nada por vencer" /> : (
         <Card className="mb-4">
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="divide-y divide-line">
             {up.data.map((u, i) => (
               <li key={`${u.source}-${u.ref_id}-${u.due_date}-${i}`} className="flex items-center justify-between py-2">
                 <div>
                   <p className="text-sm font-medium">{u.name}{u.source === "card" ? " (tarjeta)" : ""}</p>
-                  <p className={`text-xs ${u.overdue ? "font-semibold text-red-600" : "text-slate-500"}`}>{u.overdue ? "Vencido · " : ""}{fmtDate(u.due_date)}</p>
+                  <p className={`text-xs ${u.overdue ? "font-semibold text-expense" : "text-muted"}`}>{u.overdue ? "Vencido · " : ""}{fmtDate(u.due_date)}</p>
                 </div>
                 <p className="text-sm font-semibold">{u.direction === "inflow" ? "+" : "−"}<Money cents={u.amount_cents} /></p>
               </li>
@@ -183,7 +183,7 @@ export default function Deudas() {
             <li key={o.id}>
               <Card>
                 <div className="flex justify-between gap-2">
-                  <div className="min-w-0"><p className="truncate font-medium">{o.name}</p><p className="text-xs text-slate-500">{KIND_ES[o.kind]} · {fmtDate(o.due_date)} · {REC_ES[o.recurrence]}</p></div>
+                  <div className="min-w-0"><p className="truncate font-medium">{o.name}</p><p className="text-xs text-muted">{KIND_ES[o.kind]} · {fmtDate(o.due_date)} · {REC_ES[o.recurrence]}</p></div>
                   <p className="shrink-0 font-semibold">{o.direction === "inflow" ? "+" : "−"}<Money cents={o.amount_cents} /></p>
                 </div>
                 <div className="mt-2 flex gap-2">

@@ -13,12 +13,12 @@ export default function Vida() {
   const [tab, setTab] = useState<Tab>("tasks");
   return (
     <>
-      <h1 className="mb-3 text-xl font-bold">Vida</h1>
-      <div role="tablist" className="relative mb-4 grid grid-cols-2 border-b border-slate-200 dark:border-slate-800">
+      <h1 className="mb-4 text-3xl font-bold tracking-tight">Vida</h1>
+      <div role="tablist" className="relative mb-4 grid grid-cols-2 rounded-full bg-soft p-1">
         {([["tasks", "Pendientes"], ["habits", "Hábitos"]] as const).map(([k, l]) => (
-          <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`min-h-11 text-sm font-semibold ${tab === k ? "text-emerald-700 dark:text-emerald-400" : "text-slate-500"}`}>{l}</button>
+          <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`relative z-10 min-h-11 text-sm font-semibold transition-colors duration-200 ${tab === k ? "text-onink" : "text-muted"}`}>{l}</button>
         ))}
-        <span className="absolute bottom-0 h-0.5 w-1/2 bg-emerald-600 transition-transform duration-300" style={{ transform: tab === "tasks" ? "translateX(0)" : "translateX(100%)" }} />
+        <span className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full bg-ink transition-transform duration-300 ease-[cubic-bezier(.22,1,.36,1)]" style={{ transform: tab === "tasks" ? "translateX(0)" : "translateX(100%)" }} />
       </div>
       <div key={tab} className="pv-page">{tab === "tasks" ? <Tasks /> : <Habits />}</div>
     </>
@@ -42,7 +42,12 @@ function Tasks() {
   const [del, setDel] = useState<Task | null>(null);
   const [local, setLocal] = useState<Record<number, "done" | "pending">>({});
 
-  const tasks = (data || []).map((t) => (local[t.id] ? { ...t, status: local[t.id] } : t));
+  const [day, setDay] = useState<string | null>(null);
+  const dow = new Date(`${today}T12:00:00`).getDay();
+  const monday = addDays(today, -((dow + 6) % 7));
+  const week = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+  const DOW3 = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+  const tasks = (data || []).map((t) => (local[t.id] ? { ...t, status: local[t.id] } : t)).filter((t) => !day || t.due_date === day);
   const g = groupTasks(tasks, today);
 
   async function add(e: React.FormEvent) {
@@ -67,21 +72,33 @@ function Tasks() {
 
   const section = (label: string, items: Task[], tone = "") => items.length > 0 && (
     <div className="mb-4">
-      <h2 className={`mb-1 text-xs font-semibold uppercase tracking-wide ${tone || "text-slate-500"}`}>{label} · {items.length}</h2>
-      <Card className="!p-1"><ul className="divide-y divide-slate-100 dark:divide-slate-800">{items.map((t) => <TaskRow key={t.id} t={t} today={today} onFlip={() => flip(t)} onEdit={() => setEdit(t)} />)}</ul></Card>
+      <h2 className={`mb-1 text-xs font-semibold uppercase tracking-wide ${tone || "text-muted"}`}>{label} · {items.length}</h2>
+      <Card className="!p-1"><ul className="divide-y divide-line">{items.map((t) => <TaskRow key={t.id} t={t} today={today} onFlip={() => flip(t)} onEdit={() => setEdit(t)} />)}</ul></Card>
     </div>
   );
 
   return (
     <>
-      <form onSubmit={add} className="mb-4 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
+      <div role="group" aria-label="Filtrar por día" className="hide-scroll -mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1">
+        <button type="button" aria-pressed={day === null} onClick={() => setDay(null)}
+          className={`pv-press flex h-16 min-w-14 shrink-0 flex-col items-center justify-center rounded-full px-3 text-xs font-semibold ${day === null ? "bg-ink text-onink shadow-soft" : "bg-surface text-muted ring-1 ring-line"}`}>Todos</button>
+        {week.map((d, i) => (
+          <button type="button" key={d} aria-pressed={day === d} aria-label={`${DOW3[i]} ${Number(d.slice(8))}`} onClick={() => setDay(day === d ? null : d)}
+            className={`pv-press flex h-16 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-full text-xs font-semibold ${day === d ? "bg-ink text-onink shadow-soft" : "bg-surface text-muted ring-1 ring-line"}`}>
+            <span className="text-[11px] opacity-70">{DOW3[i]}</span>
+            <span className="num text-base">{Number(d.slice(8))}</span>
+            {d === today && <span className={`h-1 w-1 rounded-full ${day === d ? "bg-onink" : "bg-ink"}`} />}
+          </button>
+        ))}
+      </div>
+      <form onSubmit={add} className="mb-4 rounded-[28px] bg-surface p-4 shadow-soft ring-1 ring-line">
         <div className="flex gap-2">
           <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nuevo pendiente…" maxLength={200} aria-label="Título del pendiente" />
           <Btn type="submit" disabled={busy || !title.trim()}>Añadir</Btn>
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {([["Hoy", today], ["Mañana", addDays(today, 1)]] as const).map(([l, v]) => (
-            <button type="button" key={l} onClick={() => setDue(due === v ? "" : v)} className={`min-h-9 rounded-full px-3 text-xs font-semibold ring-1 ${due === v ? "bg-emerald-600 text-white ring-emerald-600" : "ring-slate-300 dark:ring-slate-700"}`}>{l}</button>
+            <button type="button" key={l} onClick={() => setDue(due === v ? "" : v)} className={`min-h-9 rounded-full px-3 text-xs font-semibold ring-1 ${due === v ? "bg-ink text-onink ring-ink" : "ring-ink/15"}`}>{l}</button>
           ))}
           <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} className="!min-h-9 !w-36 !py-1 !text-xs" aria-label="Fecha" />
           <Select value={pri} onChange={(e) => setPri(e.target.value as Priority)} className="!min-h-9 !w-24 !py-1 !text-xs" aria-label="Prioridad">
@@ -95,16 +112,16 @@ function Tasks() {
       <ErrorBox message={error} onRetry={reload} />
       {loading && !data ? <Skeleton className="h-40" /> : tasks.length === 0 ? <Empty title="Sin pendientes" hint="Escribe arriba tu primera tarea." /> : (
         <>
-          {section("Vencidas", g.overdue, "text-red-600")}
+          {section("Vencidas", g.overdue, "text-expense")}
           {section("Hoy", g.today)}
           {section("Próximas", g.upcoming)}
           {section("Sin fecha", g.nodate)}
           {g.done.length > 0 && (
             <div className="mb-4">
-              <button onClick={() => setShowDone((s) => !s)} aria-expanded={showDone} className="mb-1 min-h-9 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <button onClick={() => setShowDone((s) => !s)} aria-expanded={showDone} className="mb-1 min-h-9 text-xs font-semibold uppercase tracking-wide text-muted">
                 Hechas · {g.done.length} <span className={`inline-block transition-transform ${showDone ? "rotate-90" : ""}`}>›</span>
               </button>
-              {showDone && <Card className="!p-1"><ul className="divide-y divide-slate-100 dark:divide-slate-800">{g.done.map((t) => <TaskRow key={t.id} t={t} today={today} onFlip={() => flip(t)} onEdit={() => setEdit(t)} />)}</ul></Card>}
+              {showDone && <Card className="!p-1"><ul className="divide-y divide-line">{g.done.map((t) => <TaskRow key={t.id} t={t} today={today} onFlip={() => flip(t)} onEdit={() => setEdit(t)} />)}</ul></Card>}
             </div>
           )}
         </>
@@ -123,10 +140,10 @@ function TaskRow({ t, today, onFlip, onEdit }: { t: Task; today: string; onFlip:
     <li className="flex items-center gap-1">
       <CheckBox checked={done} onChange={onFlip} label={`${done ? "Reabrir" : "Completar"} ${t.title}`} />
       <button onClick={onEdit} className="min-h-11 min-w-0 flex-1 py-1 text-left">
-        <span className={`block truncate text-sm font-medium transition-all duration-300 ${done ? "text-slate-400 line-through" : ""}`}>{t.priority === "high" && !done ? "❗ " : ""}{t.title}</span>
-        <span className="flex items-center gap-2 text-xs text-slate-500">
+        <span className={`block truncate text-sm font-medium transition-all duration-300 ${done ? "text-muted line-through" : ""}`}>{t.priority === "high" && !done ? "❗ " : ""}{t.title}</span>
+        <span className="flex items-center gap-2 text-xs text-muted">
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${AREA_COLOR[t.area] || AREA_COLOR.otro}`}>{AREA_LABEL[t.area] || t.area}</span>
-          {t.due_date && <span className={t.due_date < today && !done ? "font-semibold text-red-600" : ""}>{fmtDate(t.due_date)}</span>}
+          {t.due_date && <span className={t.due_date < today && !done ? "font-semibold text-expense" : ""}>{fmtDate(t.due_date)}</span>}
         </span>
       </button>
     </li>
@@ -200,14 +217,14 @@ function Habits() {
   return (
     <>
       {open ? (
-        <form onSubmit={add} className="mb-4 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
+        <form onSubmit={add} className="mb-4 rounded-[28px] bg-surface p-4 shadow-soft ring-1 ring-line">
           <Field label="Nombre del hábito"><Input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} autoFocus /></Field>
           <p className="mb-1 text-sm font-medium">Emoji</p>
           <div className="mb-3 grid grid-cols-8 gap-1">
-            {EMOJIS.map((x) => <button type="button" key={x} onClick={() => setEmoji(x)} aria-label={`Emoji ${x}`} aria-pressed={emoji === x} className={`flex h-10 items-center justify-center rounded-lg text-xl transition-transform ${emoji === x ? "scale-110 bg-emerald-100 ring-2 ring-emerald-500 dark:bg-emerald-950" : ""}`}>{x}</button>)}
+            {EMOJIS.map((x) => <button type="button" key={x} onClick={() => setEmoji(x)} aria-label={`Emoji ${x}`} aria-pressed={emoji === x} className={`flex h-10 items-center justify-center rounded-lg text-xl transition-transform ${emoji === x ? "scale-110 bg-soft ring-2 ring-ink" : ""}`}>{x}</button>)}
           </div>
           <Field label={`Meta por semana: ${target} ${target === 1 ? "día" : "días"}`}>
-            <input type="range" min={1} max={7} value={target} onChange={(e) => setTarget(Number(e.target.value))} className="w-full accent-emerald-600" />
+            <input type="range" min={1} max={7} value={target} onChange={(e) => setTarget(Number(e.target.value))} className="w-full accent-[var(--ink)]" />
           </Field>
           <div className="flex gap-2"><Btn variant="secondary" onClick={() => setOpen(false)}>Cancelar</Btn><Btn type="submit" className="flex-1" disabled={busy || !name.trim()}>Crear hábito</Btn></div>
         </form>
@@ -223,16 +240,16 @@ function Habits() {
                   <p className="truncate font-semibold">{h.name}</p>
                   <Muted>{h.streak_days > 0 ? `🔥${h.streak_days} ${h.streak_days === 1 ? "día" : "días"} de racha` : "Sin racha aún"}</Muted>
                 </div>
-                <Ring pct={Math.round((h.week_count * 100) / h.target_per_week)} color={h.week_count >= h.target_per_week ? "#10b981" : "#3b82f6"}>{h.week_count}/{h.target_per_week}</Ring>
-                <button onClick={() => setDel(h)} aria-label={`Eliminar ${h.name}`} className="min-h-11 min-w-9 text-slate-400">🗑</button>
+                <Ring pct={Math.round((h.week_count * 100) / h.target_per_week)} color={h.week_count >= h.target_per_week ? "var(--income)" : "var(--ink)"}>{h.week_count}/{h.target_per_week}</Ring>
+                <button onClick={() => setDel(h)} aria-label={`Eliminar ${h.name}`} className="min-h-11 min-w-9 text-muted">🗑</button>
               </div>
               <div className="flex justify-between">
                 {h.last_7.map((d) => {
                   const dow = DIA[new Date(`${d.date}T12:00:00`).getDay()];
                   return (
                     <button key={d.date} onClick={() => toggle(h, d.date)} aria-pressed={d.done} aria-label={`${h.name} ${d.date}`} className="flex min-h-11 flex-col items-center gap-1">
-                      <span className="text-[10px] text-slate-500">{dow}</span>
-                      <span key={pop === `${h.id}${d.date}` ? "p" : "n"} className={`flex h-8 w-8 items-center justify-center rounded-full text-sm transition-colors ${d.done ? "bg-emerald-500 text-white" : "bg-slate-200 dark:bg-slate-800"} ${pop === `${h.id}${d.date}` ? "pv-pop" : ""}`}>{d.done ? "✓" : ""}</span>
+                      <span className="text-[10px] text-muted">{dow}</span>
+                      <span key={pop === `${h.id}${d.date}` ? "p" : "n"} className={`flex h-8 w-8 items-center justify-center rounded-full text-sm transition-colors ${d.done ? "bg-ink text-onink" : "bg-soft"} ${pop === `${h.id}${d.date}` ? "pv-pop" : ""}`}>{d.done ? "✓" : ""}</span>
                     </button>
                   );
                 })}
