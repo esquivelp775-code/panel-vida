@@ -3,7 +3,16 @@
 Estado: **listo para desplegar; todavía no desplegado.** Docker, compose, respaldo y restauración se
 prueban en cada push (CI, trabajo `stack`).
 
-## Esta noche: elige una opción (lista de pasos)
+> **¿Primera vez? Empieza por [GUIA_SENCILLA.md](GUIA_SENCILLA.md)**: alojamiento temporal gratuito
+> (Netlify + Render + Neon) explicado paso a paso, y cómo mudarlo a tu servidor sin perder datos.
+
+## Opción temporal: Netlify + Render + Neon (sin servidor propio)
+`render.yaml` crea la API en Render (Blueprint) y pide 4 datos: enlace de Neon, dirección de Netlify,
+correo y contraseña del primer usuario (`PANEL_BOOTSTRAP_*`, sólo se usan si no existe ningún usuario).
+La API acepta el enlace de Neon tal cual (`postgresql://…?sslmode=require`) y usa el `PORT` de la plataforma.
+Simulado localmente: producción, base vacía, alta del usuario al arrancar, CORS de Netlify, login OK.
+
+## Con servidor propio: elige una opción (lista de pasos)
 
 Netlify sólo sirve el **frontend**. La API y PostgreSQL necesitan vivir en un equipo encendido
 (tu servidor Debian) o en un servidor con Docker.

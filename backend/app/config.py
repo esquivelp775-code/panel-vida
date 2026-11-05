@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +16,19 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     login_max_attempts: int = 5
     login_window_seconds: int = 300
+    # Alta del primer usuario sin terminal (p. ej. Render gratuito): sólo actúa si NO existe ningún usuario.
+    bootstrap_email: str | None = None
+    bootstrap_password: str | None = None
+
+    @field_validator("database_url")
+    @classmethod
+    def _psycopg_driver(cls, v: str) -> str:
+        """Acepta el enlace tal como lo dan Neon/Render (postgres:// o postgresql://) y fija el driver psycopg 3."""
+        v = v.strip()
+        for prefix in ("postgres://", "postgresql://"):
+            if v.startswith(prefix):
+                return "postgresql+psycopg://" + v[len(prefix):]
+        return v
 
     @property
     def cors_origin_list(self) -> list[str]:

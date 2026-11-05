@@ -25,6 +25,23 @@ def create_user(email: str, password: str | None, name: str | None, currency: st
     print(f"Usuario {email} creado")
 
 
+def bootstrap() -> None:
+    """Crea el primer usuario con PANEL_BOOTSTRAP_EMAIL/PASSWORD si la base no tiene ninguno. Idempotente:
+    con usuarios existentes no hace nada (y nunca cambia contraseñas)."""
+    from .config import get_settings
+
+    s = get_settings()
+    if not (s.bootstrap_email and s.bootstrap_password):
+        return
+    with SessionLocal() as db:
+        if db.scalar(select(User.id).limit(1)) is not None:
+            print("bootstrap: ya existe un usuario; no se hace nada (puedes borrar PANEL_BOOTSTRAP_*)")
+            return
+    if len(s.bootstrap_password) < 10:
+        raise SystemExit("bootstrap: PANEL_BOOTSTRAP_PASSWORD debe tener al menos 10 caracteres")
+    create_user(s.bootstrap_email, s.bootstrap_password, None, "MXN")
+
+
 def seed_demo(email: str) -> None:
     """Datos 100 % ficticios para probar la interfaz."""
     with SessionLocal() as db:
@@ -78,11 +95,14 @@ def main() -> None:
     cu.add_argument("--password")
     cu.add_argument("--name")
     cu.add_argument("--currency", default="MXN")
+    sub.add_parser("bootstrap")
     sd = sub.add_parser("seed-demo")
     sd.add_argument("--email", required=True)
     a = ap.parse_args()
     if a.cmd == "create-user":
         create_user(a.email, a.password, a.name, a.currency)
+    elif a.cmd == "bootstrap":
+        bootstrap()
     else:
         seed_demo(a.email)
 

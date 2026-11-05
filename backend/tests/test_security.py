@@ -50,3 +50,36 @@ def test_csv_formula_injection_neutralized(api):
     api.tx(kind="expense", account_id=a["id"], category_id=c["id"], amount_cents=1, description="=HYPERLINK(1)")
     body = api.c.get("/api/v1/export/transactions.csv").text
     assert "'=HYPERLINK(1)" in body
+
+
+def test_database_url_accepts_neon_style():
+    from app.config import Settings
+
+    neon = "postgresql://u:p@ep-x.neon.tech/neondb?sslmode=require"
+    assert Settings(database_url=neon).database_url == "postgresql+psycopg://u:p@ep-x.neon.tech/neondb?sslmode=require"
+    assert Settings(database_url="postgres://u:p@h/db").database_url == "postgresql+psycopg://u:p@h/db"
+    already = "postgresql+psycopg://u:p@h/db"
+    assert Settings(database_url=already).database_url == already
+
+
+def test_bootstrap_creates_first_user_only(monkeypatch):
+    from sqlalchemy import func, select
+
+    from app import cli
+    from app.config import get_settings
+    from app.db import SessionLocal
+    from app.models import User
+
+    monkeypatch.setenv("PANEL_BOOTSTRAP_EMAIL", "Dueno@Example.com")
+    monkeypatch.setenv("PANEL_BOOTSTRAP_PASSWORD", "contraseña-ficticia-xyz")
+    get_settings.cache_clear()
+    try:
+        cli.bootstrap()
+        cli.bootstrap()  # segunda vez: no duplica ni cambia nada
+        with SessionLocal() as db:
+            assert db.scalar(select(func.count(User.id))) == 1
+        c = TestClient(app)
+        r = c.post("/api/v1/auth/login", json={"email": "dueno@example.com", "password": "contraseña-ficticia-xyz"})
+        assert r.status_code == 200
+    finally:
+        get_settings.cache_clear()

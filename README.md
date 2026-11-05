@@ -36,6 +36,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev   # http://localhost:3000
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | arquitectura y contrato de API v1 |
 | [docs/DATABASE.md](docs/DATABASE.md) | modelo entidad-relación y triggers |
 | [docs/SECURITY.md](docs/SECURITY.md) | controles y riesgos |
+| [docs/GUIA_SENCILLA.md](docs/GUIA_SENCILLA.md) | **ponerla en línea paso a paso (sin ser programador)** |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Netlify, Debian, respaldos |
 | [docs/MIGRATION.md](docs/MIGRATION.md) | migraciones y traslado de servidor |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | decisiones de arquitectura |

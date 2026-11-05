@@ -1,0 +1,29 @@
+# Render Blueprint: crea la API de Panel de Vida (Docker) en el plan gratuito.
+# En Render: New → Blueprint → elegir este repositorio. Pedirá los valores marcados con sync: false.
+# Guía paso a paso: docs/GUIA_SENCILLA.md
+services:
+  - type: web
+    name: panel-vida-api
+    runtime: docker
+    plan: free
+    region: ohio                      # misma región que la base de Neon (AWS us-east-2, Ohio)
+    branch: claude/panel-vida-autonomous-mission-zb4856
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: PANEL_ENV
+        value: production
+      - key: PANEL_SECRET_KEY
+        generateValue: true           # Render genera un secreto aleatorio; no hace falta inventarlo
+      - key: PANEL_DATABASE_URL
+        sync: false                   # pegar el enlace de conexión de Neon (tal cual)
+      - key: PANEL_CORS_ORIGINS
+        sync: false                   # la dirección de tu sitio de Netlify, p. ej. https://mi-panel.netlify.app
+      - key: PANEL_BOOTSTRAP_EMAIL
+        sync: false                   # tu correo para entrar a la app (sólo se usa si no hay usuarios)
+      - key: PANEL_BOOTSTRAP_PASSWORD
+        sync: false                   # tu contraseña (mín. 10 caracteres); bórrala después del primer ingreso
+      - key: PANEL_FORWARDED_ALLOW_IPS
+        value: "*"                    # la API sólo es alcanzable a través del proxy de Render

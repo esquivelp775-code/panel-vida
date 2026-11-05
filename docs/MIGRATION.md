@@ -27,3 +27,14 @@ alembic upgrade head --sql            # ver el SQL sin ejecutar
    `docker compose exec -T db pg_restore -U panel -d panel_vida --clean --if-exists < panel_vida.dump`
 3. `docker compose up -d` (la API ejecuta `alembic upgrade head` al arrancar).
 4. Verificar `GET /api/v1/reports/integrity` → `"ok": true` y comparar saldos con el origen.
+
+## De Neon (temporal) a tu servidor Debian
+Pasos explicados en [GUIA_SENCILLA.md](GUIA_SENCILLA.md) → "la mudanza". Núcleo:
+```bash
+sudo docker compose up -d db
+sudo docker compose exec -T db pg_dump -Fc "<enlace de Neon>" > neon.dump
+sudo docker compose exec -T db pg_restore -U panel -d panel_vida --no-owner --no-privileges --clean --if-exists < neon.dump
+sudo docker compose up -d --build
+```
+Neon debe estar en Postgres 16 (misma versión mayor que el contenedor). Verificar integridad y saldos antes de
+cambiar `NEXT_PUBLIC_API_URL` o de dejar de usar Neon.
