@@ -19,7 +19,6 @@ const api = async (path) => {
   assert.equal(r.status, 200, path);
   return r.json();
 };
-const before = await api("/transactions?limit=1");
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 360, height: 780 } });
@@ -41,16 +40,15 @@ await page.goto(`${BASE}/registrar/`);
 const amount = page.locator("input[inputmode=decimal]").first();
 await amount.waitFor();
 await amount.fill("42.07");
-await page.click("button[type=submit]");
-await page.waitForFunction(
-  async ([api, token, prevTotal]) => {
-    const r = await fetch(`${api}/transactions?limit=1`, { headers: { authorization: `Bearer ${token}` } });
-    return (await r.json()).total > prevTotal;
-  },
-  [API, access_token, before.total],
-  { timeout: 15000 },
-);
-const last = (await api("/transactions?limit=1")).items[0];
+// Esperar la respuesta real del POST (no sondear: el sondeo podía leer antes de que terminara el alta).
+const [created] = await Promise.all([
+  page.waitForResponse((r) => r.request().method() === "POST" && r.url().endsWith("/api/v1/transactions"),
+    { timeout: 15000 }),
+  page.click("button[type=submit]"),
+]);
+assert.equal(created.status(), 201, "el alta responde 201");
+const createdTx = await created.json();
+const last = await api(`/transactions/${createdTx.id}`);
 assert.equal(last.amount_cents, 4207, "42.07 se guarda como 4207 centavos exactos");
 const integrity = await api("/reports/integrity");
 assert.equal(integrity.ok, true, "integridad del libro");
