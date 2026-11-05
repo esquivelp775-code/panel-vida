@@ -8,17 +8,17 @@ Leyenda: ✅ hecho y probado · 🟡 parcial · ⬜ pendiente
 | 1 Modelo de datos y backend | doble partida, triggers, auth, 24 endpoints | ✅ |
 | 2 Interfaz y dashboard | Next.js PWA, dashboard, navegación móvil | ✅ (recorrido E2E básico) |
 | 3 Cuentas, ingresos, gastos | alta rápida, cuentas, categorías, conciliación, anulación | ✅ |
-| 4 Tarjetas y deudas | ciclo corte/pago, MSI, préstamos capital/interés, vencimientos | ✅ (sin pago mínimo) |
+| 4 Tarjetas y deudas | ciclo corte/pago, MSI, pago mínimo estimado, préstamos, vencimientos | ✅ |
 | 5 Presupuestos | mensual por categoría, gastado/restante | ✅ |
-| 6 Flujo y proyecciones | devengado vs liquidez, proyección por obligaciones | ✅ |
-| 7 Pruebas y auditoría | 67 pruebas backend, 9 frontend, E2E en CI; revisiones corregidas | ✅ (pendientes menores F12, F15, F16) |
-| 8 Despliegue y documentación | Docker y compose probados en CI, respaldo verificado; docs | 🟡 (falta servidor real) |
+| 6 Flujo y proyecciones | devengado vs liquidez, proyección con obligaciones y ciclos de tarjeta | ✅ |
+| 6b Importación | CSV de estados de cuenta con conciliación asistida | ✅ |
+| 7 Pruebas y auditoría | 93 pruebas backend, 11 frontend, E2E en CI; 2 revisiones financieras y 1 de seguridad corregidas | ✅ |
+| 8 Despliegue y documentación | Docker/compose probados en CI, respaldo cifrado, guía paso a paso | 🟡 (falta servidor real) |
 
 ## Siguiente iteración (prioridad)
-1. Despliegue real (requiere infraestructura del propietario).
-2. Pago mínimo e intereses de tarjeta; proyección multi-ciclo de tarjetas.
-3. Importación CSV de estados de cuenta con conciliación asistida.
-4. Respaldo automático cifrado; notificaciones push de vencimientos.
-5. Hallazgos menores F12, F15; `npm audit`; hashes de pip.
+1. Despliegue real (requiere al propietario; guía lista).
+2. Notificaciones push de vencimientos.
+3. Reglas de categorización automática para importación.
+4. Multimoneda (USD) si hace falta.
 
 Fuera de alcance hasta consolidar el núcleo financiero: CRM, hábitos, proyectos, asistentes de IA.

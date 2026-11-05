@@ -87,10 +87,18 @@ Consecuencias explícitas:
 
 ### 4a. Pago mínimo (estimado)
 * Mayor entre 1.5 % del saldo revolvente del estado y 1.25 % del límite de crédito (criterio Banxico),
-  más las mensualidades MSI del periodo; nunca mayor que el pago del estado. Redondeo hacia arriba al
+  más las mensualidades MSI del periodo y **lo vencido de estados anteriores, completo**; nunca mayor que el
+  pago del estado. Se calcula al corte y se le restan los pagos hechos desde el corte. Redondeo hacia arriba al
   centavo con aritmética entera. **No incluye intereses ni IVA**: es una estimación; el estado del banco manda.
 * Una tarjeta sigue "vencida" mientras quede saldo sin cubrir de un estado cuya fecha límite ya pasó
   (los pagos se aplican a la deuda más antigua).
+
+* **Ciclos para vencimientos y proyección:** (1) estado actual pendiente; (2) siguiente ciclo = todo lo
+  adeudado que no pertenece al estado actual, menos lo MSI aún diferido; (3) ciclos posteriores = sólo
+  mensualidades MSI. La suma de los ciclos nunca supera lo adeudado (si se pagó o hubo devolución, no se
+  proyecta de más). Un vencimiento de "pago de tarjeta" se empareja con el ciclo de fecha límite más cercana
+  y cuenta sólo por lo que ese ciclo exige.
+* No se puede cambiar el día de corte mientras haya MSI vigentes.
 
 ### 4b. Meses sin intereses (MSI)
 * La compra a meses es **gasto completo y deuda completa en su fecha** (R2 no cambia): el patrimonio y el
@@ -125,6 +133,12 @@ ya comprometidas** (no se inventa consumo futuro).
 
 ## 7a. Importación
 * Montos de CSV a centavos sin floats; coma decimal ambigua se rechaza.
+* Orden de fechas por archivo: día/mes (México) salvo evidencia de mes/día; si el archivo se contradice, 422.
+* Duplicados: se compara con movimientos vigentes de la cuenta, manuales **o importados desde otro archivo**
+  (p. ej. el pago de tarjeta que ya llegó desde el estado de débito).
+* En tarjetas, líneas que parecen mensualidades MSI ("03/12" o el monto de una mensualidad vigente) se marcan
+  y no se preseleccionan: la compra ya está registrada completa.
+* Si una fila importada se anula, puede volver a importarse.
 * Cada fila importada es una operación normal del libro (mismas reglas R1–R10), con clave de idempotencia
   derivada de la fila; la importación completa es atómica. Reporta el
 saldo mínimo proyectado y su fecha. Es una estimación: no crea transacciones.

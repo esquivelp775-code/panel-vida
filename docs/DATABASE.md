@@ -82,6 +82,11 @@ Activos, pasivos, categorías de ingreso/gasto y cuentas de capital del sistema.
 
 Trigger `trg_installment_plans_immutable` (función genérica `fn_immutable_row`) bloquea UPDATE/DELETE.
 
+### Migraciones 0004 y 0005
+* 0004: `fn_transactions_guard_update` también impide anular una reversión (antes sólo Python).
+* 0005: `trg_installment_plan_consistent` — al crear un plan MSI, la transacción debe ser una
+  `card_purchase` del mismo usuario con una entrada de esa tarjeta por `-total_cents`.
+
 ### `obligations`, `budgets`, `audit_log`
 Ver `backend/app/models.py`. `budgets` único por `(user_id, category_id, month)`.
 
