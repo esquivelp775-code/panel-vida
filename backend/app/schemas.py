@@ -324,7 +324,7 @@ class ImportCommitIn(Strict):
 
 # ------------------------------------------------------------------ vida
 Priority = Literal["low", "normal", "high"]
-Area = Literal["finanzas", "personal", "trabajo", "casa", "salud", "otro"]
+Area = Literal["finanzas", "personal", "trabajo", "casa", "salud", "otro", "ryventis"]
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 
 
@@ -337,6 +337,7 @@ class TaskCreate(Strict):
 
 
 class TaskUpdate(Strict):
+    status: Literal["pending", "doing", "done"] | None = None
     title: Title | None = None
     notes: Notes | None = None
     due_date: date | None = None

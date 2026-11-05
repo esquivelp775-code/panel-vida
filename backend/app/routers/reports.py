@@ -48,6 +48,17 @@ def projection(days: int = Query(default=90, ge=1, le=366), db: Session = Depend
     return r.projection(db, user, date.today(), days)
 
 
+@router.get("/reports/debt-plan")
+def debt_plan(target: str = Query(default="2027-06", pattern=r"^\d{4}-(0[1-9]|1[0-2])$"),
+              db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    t = date(int(target[:4]), int(target[5:7]), 1)
+    if t < r.month_start(date.today()):
+        from ..ledger import LedgerError
+
+        raise LedgerError("El mes objetivo debe ser este mes o posterior")
+    return r.debt_plan(db, user, date.today(), t)
+
+
 @router.get("/reports/integrity")
 def integrity(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return r.integrity(db, user)

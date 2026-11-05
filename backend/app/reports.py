@@ -404,3 +404,51 @@ def integrity(db: Session, user: User) -> dict:
             "reversals_not_mirrored": bad_reversals,
             "archived_with_balance": archived_nonzero, "ledger_sum_cents": ledger_sum,
             "checked_transactions": len(rows)}
+
+
+# ------------------------------------------------------------------ plan de deudas
+def _months_between(a: date, b: date) -> int:
+    """Meses completos de calendario de a (mes actual) a b (mes objetivo), contando el objetivo."""
+    return (b.year - a.year) * 12 + (b.month - a.month) + 1
+
+
+def debt_plan(db: Session, user: User, today: date, target: date) -> dict:
+    """Cuánto pagar al mes para quedar libre de deudas en `target` (mes) y a qué ritmo vas.
+    Todo en centavos enteros; los montos mensuales se redondean hacia arriba."""
+    months_left = max(1, _months_between(today, target))
+    accs = accounts_with_balance(db, user, "liability", as_of=today)
+    pending = list(db.scalars(select(Obligation).where(
+        Obligation.user_id == user.id, Obligation.status == "pending",
+        Obligation.kind.in_(("loan_installment", "card_payment")))))
+    debts = []
+    for a, owed in accs:
+        if owed <= 0:
+            continue
+        needed = -(-owed // months_left)
+        # Pagos mensuales ya programados hacia esta deuda (una obligación anual cuenta 1/12).
+        scheduled = sum(o.amount_cents if o.recurrence != "yearly" else -(-o.amount_cents // 12)
+                        for o in pending if o.target_account_id == a.id and o.recurrence != "none")
+        payoff = None
+        if scheduled > 0:
+            n = -(-owed // scheduled)
+            payoff = add_months(month_start(today), n - 1, 1).strftime("%Y-%m")
+        debts.append({"account_id": a.id, "name": a.name, "subtype": a.subtype, "owed_cents": owed,
+                      "monthly_needed_cents": needed, "scheduled_monthly_cents": scheduled,
+                      "projected_payoff_month": payoff,
+                      "on_track": payoff is not None and payoff <= target.strftime("%Y-%m")})
+    debts.sort(key=lambda d: -d["owed_cents"])
+    total_owed = sum(d["owed_cents"] for d in debts)
+    total_needed = sum(d["monthly_needed_cents"] for d in debts)
+    # Neto promedio de los últimos 3 meses completos (ingresos − gastos, criterio devengado).
+    end_prev = month_start(today) - timedelta(days=1)
+    start_3 = add_months(month_start(today), -3, 1)
+    cf = cashflow(db, user, start_3, end_prev)["totals"]
+    avg_net = cf["net_cents"] // 3
+    projection, remaining = [], total_owed
+    for i in range(months_left):
+        remaining = max(0, remaining - total_needed)
+        projection.append({"month": add_months(month_start(today), i, 1).strftime("%Y-%m"),
+                           "remaining_cents": remaining})
+    return {"target_month": target.strftime("%Y-%m"), "months_left": months_left, "total_owed_cents": total_owed,
+            "total_monthly_needed_cents": total_needed, "avg_monthly_net_cents": avg_net,
+            "feasible": total_owed == 0 or avg_net >= total_needed, "debts": debts, "projection": projection}

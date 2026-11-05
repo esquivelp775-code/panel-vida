@@ -14,9 +14,10 @@ MONTH = r"^\d{4}-(0[1-9]|1[0-2])$"
 
 
 @router.get("/tasks", response_model=list[s.TaskOut])
-def list_tasks(status: str | None = Query(default=None, pattern="^(pending|done)$"),
+def list_tasks(status: str | None = Query(default=None, pattern="^(pending|doing|done)$"),
+               area: str | None = Query(default=None, pattern="^[a-z]{1,20}$"),
                db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return life.list_tasks(db, user, status, date.today())
+    return life.list_tasks(db, user, status, date.today(), area)
 
 
 @router.post("/tasks", response_model=s.TaskOut, status_code=201)
@@ -37,6 +38,13 @@ def update_task(task_id: int, body: s.TaskUpdate, db: Session = Depends(get_db),
 @router.post("/tasks/{task_id}/complete", response_model=s.TaskOut)
 def complete_task(task_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     t = life.set_task_done(db, user, task_id, True)
+    db.commit()
+    return t
+
+
+@router.post("/tasks/{task_id}/start", response_model=s.TaskOut)
+def start_task(task_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    t = life.start_task(db, user, task_id)
     db.commit()
     return t
 

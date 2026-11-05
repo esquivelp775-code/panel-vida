@@ -24,13 +24,15 @@ def get_task(db: Session, user: User, task_id: int) -> Task:
     return t
 
 
-def list_tasks(db: Session, user: User, status: str | None, today: date) -> list[Task]:
+def list_tasks(db: Session, user: User, status: str | None, today: date, area: str | None = None) -> list[Task]:
     q = select(Task).where(Task.user_id == user.id)
     if status:
         q = q.where(Task.status == status)
+    if area:
+        q = q.where(Task.area == area)
     tasks = list(db.scalars(q))
     far = date.max
-    tasks.sort(key=lambda t: (t.status != "pending", t.due_date or far, PRIORITY_ORDER.get(t.priority, 1), t.id))
+    tasks.sort(key=lambda t: (t.status == "done", t.due_date or far, PRIORITY_ORDER.get(t.priority, 1), t.id))
     return tasks
 
 
@@ -43,20 +45,36 @@ def create_task(db: Session, user: User, p: s.TaskCreate) -> Task:
 
 def update_task(db: Session, user: User, task_id: int, p: s.TaskUpdate) -> Task:
     t = get_task(db, user, task_id)
-    for k, v in p.model_dump(exclude_unset=True).items():
+    data = p.model_dump(exclude_unset=True)
+    status = data.pop("status", None)
+    for k, v in data.items():
         if k in ("title", "priority", "area") and v is None:
             continue  # no se pueden dejar vacíos
         setattr(t, k, v)
+    if status:
+        set_status(t, status)
     db.flush()
     return t
 
 
+def set_status(t: Task, status: str) -> None:
+    if status == "done":
+        if t.status != "done":
+            t.status, t.completed_at = "done", datetime.now(UTC)
+    else:
+        t.status, t.completed_at = status, None
+
+
 def set_task_done(db: Session, user: User, task_id: int, done: bool) -> Task:
     t = get_task(db, user, task_id)
-    if done and t.status != "done":
-        t.status, t.completed_at = "done", datetime.now(UTC)
-    elif not done and t.status != "pending":
-        t.status, t.completed_at = "pending", None
+    set_status(t, "done" if done else "pending")
+    db.flush()
+    return t
+
+
+def start_task(db: Session, user: User, task_id: int) -> Task:
+    t = get_task(db, user, task_id)
+    set_status(t, "doing")
     db.flush()
     return t
 
