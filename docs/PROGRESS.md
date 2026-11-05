@@ -6,6 +6,16 @@
 Fases 0–7 implementadas y verificadas; CI verde en GitHub (backend, frontend y stack completo con
 Docker). Fase 8: despliegue preparado y probado en CI, **no desplegado** en un servidor real.
 
+## Rediseño v2, Ryventis y plan de deudas (2026-11-05, cierre de sesión 1)
+* API: tablero Ryventis (área `ryventis`, estado `doing`) y `/reports/debt-plan` (meta: libre de deudas
+  en mayo–junio 2027; pago mensual necesario por deuda, ritmo actual, viabilidad, proyección).
+* UI v2 (liquid glass, fondo animado, tipografías Bricolage Grotesque + Inter + Instrument Serif),
+  Inicio por segmentos (Hoy · Esta semana · Ryventis · Finanzas), hub /finanzas con plan de deudas.
+* **Siguiente sesión, en orden:** (1) cargar estados de cuenta reales (el propietario los compartirá;
+  convertirlos a CSV de importación, nunca guardarlos en el repo); (2) CRM personal para Ryventis
+  (contactos, etapas Nuevo→Charla→Propuesta→Cliente, próximos seguimientos) según la referencia del
+  propietario; (3) proyectos Ryventis con monto y entregas; (4) notificaciones push.
+
 ## Vida y dashboard interactivo (2026-11-05)
 * API (migración 0006): pendientes (`/tasks`), hábitos con racha (`/habits`), calendario mensual (`/calendar`).
 * UI: navegación Inicio · Movimientos · Calendario · Vida · Más; dashboard con animaciones y gráficas
