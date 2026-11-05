@@ -49,7 +49,7 @@ export default function Inicio() {
         <div className="mb-3 space-y-2">
           {d.cards.map((c) => (
             <Card key={c.id}>
-              <div className="flex items-baseline justify-between"><p className="font-semibold">{c.name}</p><p className="font-bold"><Money cents={c.owed_cents} /></p></div>
+              <div className="flex items-baseline justify-between"><p className="font-semibold">{c.name}{c.overdue && <span className="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">Vencido</span>}</p><p className="font-bold"><Money cents={c.owed_cents} /></p></div>
               {c.credit_limit_cents != null && (
                 <>
                   <div className="my-2"><Bar pct={pctOf(c.owed_cents, c.credit_limit_cents)} over={c.owed_cents > c.credit_limit_cents} label="Uso del límite" /></div>
@@ -59,6 +59,7 @@ export default function Inicio() {
               {c.next_due_date && (
                 <Muted>Próximo pago: {fmtDate(c.next_due_date)}{c.statement_due_cents != null ? ` · ${formatCents(c.statement_due_cents)}` : ""}</Muted>
               )}
+              {(c.deferred_cents ?? 0) > 0 && <Muted>MSI por facturar {formatCents(c.deferred_cents ?? 0)}</Muted>}
             </Card>
           ))}
         </div>

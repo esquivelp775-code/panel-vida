@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, fmtDate } from "@/lib/api";
+import { CORRECTABLE_KINDS, prefillFromEntries } from "@/lib/prefill";
 import { errMsg, useLoad } from "@/lib/useLoad";
 import { Btn, Card, Confirm, ErrorBox, Field, H2, KIND_LABEL, Loading, Money, Muted, PageTitle, Textarea, useToast } from "@/components/ui";
 
@@ -30,6 +31,8 @@ function Detail() {
   if (error && !t) return <ErrorBox message={error} onRetry={reload} />;
   if (!t) return null;
   const canVoid = !t.voided_at && !t.reverses_id && t.kind !== "reversal";
+
+  const canFix = canVoid && CORRECTABLE_KINDS.includes(t.kind) && prefillFromEntries(t.kind, t.entries) !== null;
 
   return (
     <>
@@ -59,6 +62,12 @@ function Detail() {
         </ul>
         <Muted className="mt-2">Positivo = débito, negativo = crédito (doble partida).</Muted>
       </Card>
+      {canFix && (
+        <>
+          <Link href={`/registrar/?fix=${t.id}`} className="mb-1 flex min-h-11 w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Corregir</Link>
+          <Muted className="mb-3">Se crea el movimiento corregido y la original queda en el historial como anulada.</Muted>
+        </>
+      )}
       {canVoid && <Btn variant="danger" className="w-full" onClick={() => { setErr(null); setOpen(true); }}>Anular movimiento</Btn>}
       <Confirm open={open} title="Anular movimiento" danger confirmLabel="Anular" busy={busy} onConfirm={doVoid} onClose={() => setOpen(false)}
         message="No se borra nada: se crea una reversión que deja los saldos como antes. Esta acción no se puede deshacer.">

@@ -6,7 +6,7 @@ import { useLoad } from "@/lib/useLoad";
 import { Btn, Card, Empty, ErrorBox, Field, Input, KIND_LABEL, Loading, Money, PageTitle, Select } from "@/components/ui";
 
 const PAGE = 20;
-const KINDS = ["income", "expense", "card_purchase", "transfer", "card_payment", "loan_payment", "loan_disbursement", "adjustment"];
+const KINDS = ["income", "expense", "card_purchase", "transfer", "card_payment", "loan_payment", "loan_disbursement", "adjustment", "refund"];
 
 export default function Movimientos() {
   // AppShell sólo renderiza tras montar, así que leer la URL aquí no rompe la hidratación.

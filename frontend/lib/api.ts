@@ -42,11 +42,19 @@ export interface Transaction {
 }
 export type TxCreate =
   | { kind: "income"; occurred_on: string; description: string; notes?: string; account_id: number; category_id: number; amount_cents: number }
-  | { kind: "expense"; occurred_on: string; description: string; notes?: string; account_id: number; category_id: number; amount_cents: number }
+  | { kind: "expense"; occurred_on: string; description: string; notes?: string; account_id: number; category_id: number; amount_cents: number; installments?: number }
   | { kind: "refund"; occurred_on: string; description: string; notes?: string; account_id: number; category_id: number; amount_cents: number }
   | { kind: "transfer"; occurred_on: string; description: string; notes?: string; from_account_id: number; to_account_id: number; amount_cents: number }
   | { kind: "card_payment"; occurred_on: string; description: string; notes?: string; from_account_id: number; card_account_id: number; amount_cents: number }
   | { kind: "loan_payment"; occurred_on: string; description: string; notes?: string; from_account_id: number; loan_account_id: number; principal_cents: number; interest_cents: number; interest_category_id?: number };
+export interface AccountUpdate {
+  name?: string; credit_limit_cents?: number; statement_day?: number; due_day?: number; interest_rate_bps?: number;
+}
+export interface InstallmentPlan {
+  plan_id: number; transaction_id: number; description: string; purchased_on: string; total_cents: number;
+  months: number; installment_cents: number; billed_count: number; remaining_cents: number; next_closing: string | null;
+}
+export type ObligationUpdate = Partial<Pick<Obligation, "name" | "amount_cents" | "due_date" | "recurrence" | "pay_from_account_id" | "target_account_id" | "category_id">>;
 export interface TxList { items: Transaction[]; total: number }
 export interface TxFilters { account_id?: string; kind?: string; date_from?: string; date_to?: string; q?: string; include_voided?: boolean; limit?: number; offset?: number }
 
@@ -63,7 +71,7 @@ export interface UpcomingItem { source: "obligation" | "card"; ref_id: number; n
 
 export interface Budget { id: number; category_id: number; category_name: string; month: string; amount_cents: number; spent_cents: number; remaining_cents: number }
 
-export interface CardSummary { id: number; name: string; owed_cents: number; credit_limit_cents: number | null; available_credit_cents: number | null; next_due_date: string | null; statement_due_cents: number | null }
+export interface CardSummary { id: number; name: string; owed_cents: number; credit_limit_cents: number | null; available_credit_cents: number | null; next_due_date: string | null; statement_due_cents: number | null; overdue?: boolean; deferred_cents?: number }
 export interface Dashboard {
   available_cents: number; total_debt_cents: number; net_worth_cents: number;
   month: { income_cents: number; expense_cents: number; net_cents: number };
@@ -139,6 +147,8 @@ export const api = {
     json<Account[]>("/accounts", { query: { account_class, include_archived } }),
   account: (id: number) => json<Account>(`/accounts/${id}`),
   createAccount: (b: AccountCreate) => json<Account>("/accounts", { method: "POST", body: b }),
+  updateAccount: (id: number, b: AccountUpdate) => json<Account>(`/accounts/${id}`, { method: "PATCH", body: b }),
+  installments: (id: number) => json<InstallmentPlan[]>(`/accounts/${id}/installments`),
   archiveAccount: (id: number) => json<Account>(`/accounts/${id}/archive`, { method: "POST" }),
   reconcile: (id: number, statement_balance_cents: number, as_of: string, create_adjustment: boolean) =>
     json<ReconcileResult>(`/accounts/${id}/reconcile`, { method: "POST", body: { statement_balance_cents, as_of, create_adjustment } }),
@@ -153,6 +163,8 @@ export const api = {
   createObligation: (b: ObligationCreate) => json<Obligation>("/obligations", { method: "POST", body: b }),
   settleObligation: (id: number, b: { account_id?: number; amount_cents?: number; occurred_on?: string }) =>
     json<Obligation>(`/obligations/${id}/settle`, { method: "POST", body: b }),
+  updateObligation: (id: number, b: ObligationUpdate) => json<Obligation>(`/obligations/${id}`, { method: "PATCH", body: b }),
+  skipObligation: (id: number) => json<Obligation>(`/obligations/${id}/skip`, { method: "POST" }),
   cancelObligation: (id: number) => json<Obligation>(`/obligations/${id}/cancel`, { method: "POST" }),
   upcoming: (days = 30) => json<UpcomingItem[]>("/upcoming", { query: { days } }),
 

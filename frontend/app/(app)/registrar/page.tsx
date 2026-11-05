@@ -1,10 +1,13 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api, todayISO, type Account, type TxCreate } from "@/lib/api";
-import { formatCents, parseToCents, parseToCentsAllowZero } from "@/lib/money";
+import { centsToInput, formatCents, parseToCents, parseToCentsAllowZero } from "@/lib/money";
+import { MSI_OPTIONS, splitInstallments } from "@/lib/installments";
+import { prefillFromEntries } from "@/lib/prefill";
 import { errMsg, getPref, setPref, useLoad } from "@/lib/useLoad";
-import { Btn, Card, Empty, ErrorBox, Field, Input, Loading, PageTitle, Segmented, Select, useToast } from "@/components/ui";
+import { Btn, Card, Empty, ErrorBox, Field, Input, Loading, Muted, PageTitle, Segmented, Select, useToast } from "@/components/ui";
 
 type Mode = "expense" | "income" | "transfer" | "card_payment" | "loan_payment" | "refund";
 const MODES: { value: Mode; label: string }[] = [
@@ -39,6 +42,7 @@ function useRemembered(key: string, options: Account[]) {
 
 export default function Registrar() {
   const toast = useToast();
+  const router = useRouter();
   const { data: accounts, error: loadErr, loading, reload } = useLoad(() => api.accounts(), []);
   const [mode, setMode] = useState<Mode>("expense");
   useEffect(() => { const m = getPref("last_mode") as Mode; if (MODES.some((x) => x.value === m)) setMode(m); }, []);
@@ -77,7 +81,47 @@ export default function Registrar() {
 
   useEffect(() => { amountRef.current?.focus(); }, [loading, mode]);
 
+  // MSI: sólo para gasto con tarjeta de crédito.
+  const [msi, setMsi] = useState("");
+  const expAccObj = payable.find((a) => String(a.id) === expAcc);
+  const isCardSel = mode === "expense" && expAccObj?.subtype === "credit_card";
+  const noCutoff = isCardSel && expAccObj?.statement_day == null;
+  const msiN = isCardSel && !noCutoff && msi ? Number(msi) : 0;
+  const msiOptions = MSI_OPTIONS.includes(Number(msi)) || !msi ? MSI_OPTIONS : [...MSI_OPTIONS, Number(msi)].sort((x, y) => x - y);
+
+  // Corregir: ?fix=<id> abre el formulario precargado desde los asientos.
+  const [fixId, setFixId] = useState<number | null>(null);
+  useEffect(() => { const v = Number(new URLSearchParams(window.location.search).get("fix")); if (v > 0) setFixId(v); }, []);
+  const fixTx = useLoad(() => (fixId ? api.transaction(fixId) : Promise.resolve(null)), [fixId]);
+  const [fixErr, setFixErr] = useState<string | null>(null);
+  const [fixDone, setFixDone] = useState<{ newId: number; err: string } | null>(null);
+  const [voiding, setVoiding] = useState(false);
+  const prefilled = useRef(false);
+  const orig = fixTx.data;
+
+  useEffect(() => {
+    if (!fixId || prefilled.current || !accounts || !orig) return;
+    prefilled.current = true;
+    if (orig.voided_at || orig.reverses_id) { setFixErr("Este movimiento ya está anulado o es una reversión: no se puede corregir."); return; }
+    const p = prefillFromEntries(orig.kind, orig.entries);
+    if (!p) { setFixErr("Este tipo de movimiento no se puede corregir desde aquí. Anúlalo y regístralo de nuevo."); return; }
+    setMode(p.mode); setAmount(centsToInput(p.amountCents)); setDate(orig.occurred_on.slice(0, 10)); setDesc(orig.description);
+    const S = String;
+    if (p.mode === "expense" || p.mode === "refund") { setExpAcc(S(p.accountId)); setExpCat(S(p.categoryId)); }
+    if (p.mode === "income") { setIncAcc(S(p.accountId)); setIncCat(S(p.categoryId)); }
+    if (p.mode === "transfer") { setTrFrom(S(p.fromId)); setTrTo(S(p.toId)); }
+    if (p.mode === "card_payment") { setCpFrom(S(p.fromId)); setCpCard(S(p.toId)); }
+    if (p.mode === "loan_payment") {
+      setLpFrom(S(p.fromId)); setLpLoan(S(p.toId));
+      if (p.interestCents) { setInterest(centsToInput(p.interestCents)); setLpIntCat(S(p.interestCategoryId)); }
+    }
+    if (orig.kind === "card_purchase" && p.accountId) {
+      api.installments(p.accountId).then((pl) => { const m = pl.find((x) => x.transaction_id === orig.id); if (m) setMsi(String(m.months)); }).catch(() => {});
+    }
+  }, [fixId, accounts, orig]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const cents = parseToCents(amount);
+  const split = msiN && cents !== null ? splitInstallments(cents, msiN) : null;
   const name = (id: string) => all.find((a) => String(a.id) === id)?.name || "";
 
   function build(): TxCreate | string {
@@ -96,7 +140,7 @@ export default function Registrar() {
     if (cents === null) return "Monto inválido. Usa números positivos con máximo 2 decimales (ej. 1,234.50).";
     if (mode === "expense" || mode === "refund") {
       if (!expAcc || !expCat) return "Elige cuenta y categoría.";
-      return { kind: mode, ...base, description: fallback(mode === "refund" ? `Devolución ${name(expCat)}` : name(expCat)), account_id: Number(expAcc), category_id: Number(expCat), amount_cents: cents };
+      return { kind: mode, ...base, description: fallback(mode === "refund" ? `Devolución ${name(expCat)}` : name(expCat)), account_id: Number(expAcc), category_id: Number(expCat), amount_cents: cents, ...(mode === "expense" && msiN ? { installments: msiN } : {}) };
     }
     if (mode === "income") {
       if (!incAcc || !incCat) return "Elige cuenta y categoría.";
@@ -114,8 +158,9 @@ export default function Registrar() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
-    const payload = build();
-    if (typeof payload === "string") { setError(payload); return; }
+    const built = build();
+    if (typeof built === "string") { setError(built); return; }
+    const payload: TxCreate = orig?.notes && fixId ? { ...built, notes: orig.notes } : built;
     setError(null); setBusy(true);
     // Misma clave mientras el cuerpo no cambie (reintento seguro); cuerpo distinto => clave nueva.
     const sig = JSON.stringify(payload);
@@ -123,6 +168,14 @@ export default function Registrar() {
     try {
       const tx = await api.createTransaction(payload, attempt.current.key);
       attempt.current = null;
+      if (fixId && orig) {
+        try {
+          await api.voidTransaction(orig.id, `Corregido por operación #${tx.id}`);
+          toast("Movimiento corregido");
+          router.replace(`/movimientos/detalle/?id=${tx.id}`);
+        } catch (ve) { setFixDone({ newId: tx.id, err: errMsg(ve) }); }
+        return;
+      }
       toast(`Registrado: ${formatCents(tx.amount_cents)}`);
       setAmount(""); setInterest(""); setDesc("");
       amountRef.current?.focus();
@@ -131,13 +184,24 @@ export default function Registrar() {
     finally { setBusy(false); }
   }
 
+  async function retryVoid() {
+    if (!orig || !fixDone || voiding) return;
+    setVoiding(true);
+    try {
+      await api.voidTransaction(orig.id, `Corregido por operación #${fixDone.newId}`);
+      toast("Movimiento corregido");
+      router.replace(`/movimientos/detalle/?id=${fixDone.newId}`);
+    } catch (ve) { setFixDone({ newId: fixDone.newId, err: errMsg(ve) }); } finally { setVoiding(false); }
+  }
+
   const sel = (opts: Account[], v: string, set: (v: string) => void) => (
     <Select value={v} onChange={(e) => set(e.target.value)}>
       {opts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
     </Select>
   );
 
-  if (loading && !accounts) return <Loading />;
+  if ((loading && !accounts) || (fixId && fixTx.loading && !orig)) return <Loading />;
+  if (fixId && fixTx.error && !orig) return <ErrorBox message={fixTx.error} onRetry={fixTx.reload} />;
   if (loadErr && !accounts) return <ErrorBox message={loadErr} onRetry={reload} />;
 
   const needs: string[] = [];
@@ -150,8 +214,22 @@ export default function Registrar() {
   return (
     <>
       <PageTitle right={<Link href="/" className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Cerrar</Link>}>Registrar</PageTitle>
-      <Segmented value={mode} onChange={changeMode} options={MODES} />
-      {needs.length > 0 ? (
+      {fixId ? (
+        <Card className="mb-3">
+          <p className="font-semibold">Corregir operación #{fixId}</p>
+          <Muted>Se registra la versión corregida y la original queda en el historial como anulada.</Muted>
+          <ErrorBox message={fixErr} />
+        </Card>
+      ) : <Segmented value={mode} onChange={changeMode} options={MODES} />}
+      {fixDone && orig && (
+        <div role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-800 ring-1 ring-red-200 dark:bg-red-950 dark:text-red-200 dark:ring-red-900">
+          <p className="font-semibold">La operación corregida SÍ se creó (<Link className="underline" href={`/movimientos/detalle/?id=${fixDone.newId}`}>#{fixDone.newId}</Link>), pero no se pudo anular la original.</p>
+          <p className="mt-1">{fixDone.err}</p>
+          <p className="mt-1">Mientras tanto el movimiento está duplicado. Reintenta o anula manualmente la <Link className="underline" href={`/movimientos/detalle/?id=${orig.id}`}>original #{orig.id}</Link>.</p>
+          <Btn variant="danger" className="mt-2 w-full" onClick={retryVoid} disabled={voiding}>{voiding ? "Anulando…" : "Reintentar anulación"}</Btn>
+        </div>
+      )}
+      {fixDone ? null : needs.length > 0 ? (
         <Empty title={`Primero crea ${needs.join(" y ")}`} hint="Se hace una sola vez en Cuentas." action={<Link href="/cuentas/" className="font-semibold text-emerald-700 underline">Ir a Cuentas</Link>} />
       ) : (
         <form onSubmit={submit} noValidate>
@@ -165,6 +243,14 @@ export default function Registrar() {
             )}
             {(mode === "expense" || mode === "refund") && (<>
               <Field label="Cuenta o tarjeta">{sel(payable, expAcc, setExpAcc)}</Field>
+              {isCardSel && (
+                <Field label="Meses sin intereses (opcional)" hint={noCutoff ? "Configura el día de corte de la tarjeta" : split ? `${msiN} mensualidades de ${formatCents(split.first)}${split.extra > 0 ? ` (las primeras ${split.extra}; el resto de ${formatCents(split.rest)})` : ""}` : undefined}>
+                  <Select value={noCutoff ? "" : msi} onChange={(e) => setMsi(e.target.value)} disabled={noCutoff}>
+                    <option value="">Sin MSI</option>
+                    {msiOptions.map((n) => <option key={n} value={n}>{n} meses</option>)}
+                  </Select>
+                </Field>
+              )}
               <Field label="Categoría">{sel(expCats, expCat, setExpCat)}</Field>
             </>)}
             {mode === "income" && (<>
