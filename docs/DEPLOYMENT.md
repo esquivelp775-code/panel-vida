@@ -1,6 +1,6 @@
 # Despliegue
 
-Estado: **listo para desplegar; todavía no desplegado.** Docker, compose, respaldo y restauración se
+Estado: **en línea** desde 2026-11-05 (Netlify + Render + Neon, temporal). Mudanza a Debian pendiente. Docker, compose, respaldo y restauración se
 prueban en cada push (CI, trabajo `stack`).
 
 > **¿Primera vez? Empieza por [GUIA_SENCILLA.md](GUIA_SENCILLA.md)**: alojamiento temporal gratuito

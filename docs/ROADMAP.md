@@ -13,7 +13,7 @@ Leyenda: ✅ hecho y probado · 🟡 parcial · ⬜ pendiente
 | 6 Flujo y proyecciones | devengado vs liquidez, proyección con obligaciones y ciclos de tarjeta | ✅ |
 | 6b Importación | CSV de estados de cuenta con conciliación asistida | ✅ |
 | 7 Pruebas y auditoría | 93 pruebas backend, 11 frontend, E2E en CI; 2 revisiones financieras y 1 de seguridad corregidas | ✅ |
-| 8 Despliegue y documentación | Docker/compose probados en CI, respaldo cifrado, guía paso a paso | 🟡 (falta servidor real) |
+| 8 Despliegue y documentación | en línea (Netlify + Render + Neon); Docker/compose y respaldo listos para Debian | ✅ (mudanza a Debian pendiente) |
 
 ## Siguiente iteración (prioridad)
 1. Despliegue real (requiere al propietario; guía lista).

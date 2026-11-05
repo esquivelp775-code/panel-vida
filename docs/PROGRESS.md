@@ -1,10 +1,18 @@
 # Progreso — Panel de Vida
 
-Última actualización: 2026-11-05 (sesión 1, tercera ronda).
+Última actualización: 2026-11-05 (sesión 1, despliegue).
 
 ## Fase actual
 Fases 0–7 implementadas y verificadas; CI verde en GitHub (backend, frontend y stack completo con
 Docker). Fase 8: despliegue preparado y probado en CI, **no desplegado** en un servidor real.
+
+## Despliegue (2026-11-05) — EN LÍNEA
+* **Desplegado y verificado por el propietario**: frontend en Netlify, API en Render (Blueprint `render.yaml`,
+  plan gratuito), base de datos PostgreSQL 16 en Neon. Inicio de sesión real correcto.
+* Incidencias resueltas: Render/Netlify apuntaban a `main` (sólo commit inicial) → rama de trabajo;
+  `PANEL_CORS_ORIGINS` con "/" final → la API ahora la tolera.
+* Pendiente del propietario: borrar `PANEL_BOOTSTRAP_PASSWORD` en Render; exportar respaldo semanal.
+* Plan: usar este alojamiento 1–2 meses y mudar a Debian (GUIA_SENCILLA.md → "la mudanza").
 
 ## Tercera ronda (2026-11-05)
 * Moneda base **MXN confirmada** por el propietario.
@@ -82,9 +90,8 @@ orquestador cubrió esas tareas directamente para no duplicar contexto).
 | UX | "Corregir" reescribe las preferencias de cuenta recordadas; no hay campo de notas en Registrar | menor |
 
 ## Bloqueos que requieren al propietario
-1. **Despliegue (esta noche):** elegir opción en `docs/DEPLOYMENT.md` → "Esta noche". Recomendada: servidor
-   Debian + Tailscale (privado). Para Netlify hace falta además un backend accesible por HTTPS (túnel).
-2. Guardar la frase de cifrado de respaldos fuera del servidor.
+Ninguno bloqueante. Pendientes: borrar `PANEL_BOOTSTRAP_PASSWORD` en Render; preparar el servidor Debian
+(estimado 1–1.5 semanas) para la mudanza.
 
 ## Consumo
 Desde la sesión remota no hay visibilidad de `/usage`. El propietario informó ~11 USD al cierre de la
