@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { clearToken, getToken } from "@/lib/api";
-import { NAV_GROUPS } from "@/components/nav";
+import { NAV_GROUPS, isNavItemActive, type NavItem } from "@/components/nav";
 
 const TABS = [
   { href: "/", label: "Inicio", d: "M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z" },
@@ -12,18 +12,6 @@ const TABS = [
   { href: "/vida", label: "Vida", d: "M12 21s-7-4.5-9-9a5 5 0 019-3 5 5 0 019 3c-2 4.5-9 9-9 9z" },
   { href: "/mas", label: "Más", d: "M5 12h.01M12 12h.01M19 12h.01" },
 ];
-function sideActive(path: string, search: string, href: string) {
-  const p = path.replace(/\/+$/, "") || "/";
-  const [hp, hq] = href.split("?");
-  const hpn = hp.replace(/\/+$/, "") || "/";
-  if (p !== hpn) return false;
-  if (hpn === "/vida") {
-    const t = new URLSearchParams(search).get("tab");
-    const want = hq ? new URLSearchParams(hq).get("tab") : null;
-    return want ? t === want : !t;
-  }
-  return true;
-}
 function isActive(path: string, href: string, mobile = true) {
   const p = path.replace(/\/+$/, "") || "/";
   if (href === "/") return p === "/";
@@ -35,16 +23,27 @@ const Icon = ({ d }: { d: string }) => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>
 );
 
+// Usa useSearchParams: en el export estático debe renderizarse dentro de <Suspense>.
+function SideLink({ item, open, className }: { item: NavItem; open: boolean; className: string }) {
+  const path = usePathname();
+  const tab = useSearchParams().get("tab");
+  const active = isNavItemActive(path, tab, item.href);
+  return (
+    <Link href={item.href} tabIndex={open ? 0 : -1} aria-current={active ? "page" : undefined}
+      className={`${className} ${active ? "bg-accent text-onaccent" : "text-muted hover:bg-soft hover:text-ink"}`}>
+      <Icon d={item.d} />{item.label}
+    </Link>
+  );
+}
+
 export default function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const path = usePathname();
   const [ready, setReady] = useState(false);
   const [openG, setOpenG] = useState<Record<string, boolean>>({});
-  const [search, setSearch] = useState("");
   useEffect(() => {
     try { setOpenG(JSON.parse(localStorage.getItem("pv_nav_groups") || "{}")); } catch { /* ignore */ }
   }, []);
-  useEffect(() => { setSearch(window.location.search); }, [path]);
   useEffect(() => {
     if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
     let raf = 0;
@@ -109,13 +108,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                         const cls = "pv-press flex min-h-11 w-full items-center gap-3 rounded-full px-4 text-sm font-semibold transition-colors";
                         if (t.action === "logout")
                           return <button key={t.href} type="button" tabIndex={open ? 0 : -1} onClick={() => { clearToken(); router.replace("/login/"); }} className={`${cls} text-muted hover:bg-soft hover:text-ink`}><Icon d={t.d} />{t.label}</button>;
-                        const active = sideActive(path, search, t.href);
-                        return (
-                          <Link key={t.href} href={t.href} tabIndex={open ? 0 : -1} aria-current={active ? "page" : undefined}
-                            className={`${cls} ${active ? "bg-accent text-onaccent" : "text-muted hover:bg-soft hover:text-ink"}`}>
-                            <Icon d={t.d} />{t.label}
-                          </Link>
-                        );
+                        return <Suspense key={t.href} fallback={null}><SideLink item={t} open={open} className={cls} /></Suspense>;
                       })}
                     </div>
                   </div>

@@ -1,6 +1,21 @@
 export type NavItem = { href: string; label: string; d: string; action?: "logout" };
 export type NavGroup = { id: string; label: string; open: boolean; items: NavItem[] };
 
+// Pestaña por defecto de las páginas con ?tab=; las demás páginas ignoran el parámetro.
+const DEFAULT_TAB: Record<string, string> = { "/vida": "tasks", "/ryventis": "resumen" };
+
+const trimPath = (p: string) => p.replace(/\/+$/, "") || "/";
+
+export function isNavItemActive(path: string, tab: string | null, href: string): boolean {
+  const [hrefPath, hrefQuery] = href.split("?");
+  const base = trimPath(hrefPath);
+  if (trimPath(path) !== base) return false;
+  const defaultTab = DEFAULT_TAB[base];
+  if (!defaultTab) return true;
+  const want = hrefQuery ? new URLSearchParams(hrefQuery).get("tab") : null;
+  return want ? tab === want : !tab || tab === defaultTab;
+}
+
 export const NAV_GROUPS: NavGroup[] = [
   { id: "inicio", label: "Inicio", open: true, items: [
     { href: "/", label: "Hoy", d: "M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z" },
