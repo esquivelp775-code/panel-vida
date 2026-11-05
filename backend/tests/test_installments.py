@@ -127,3 +127,13 @@ def test_f14_skip_one_occurrence_keeps_series(api, book):
     once = api.c.post("/api/v1/obligations", json={"name": "Única", "kind": "bill", "amount_cents": 1,
                                                    "due_date": "2027-01-01", "category_id": rent["id"]}).json()
     assert api.c.post(f"/api/v1/obligations/{once['id']}/skip").status_code == 422
+
+
+def test_f13_plan_must_match_its_purchase(api, book):
+    t = api.tx(kind="card_purchase", card_account_id=book["card"]["id"], category_id=book["food"]["id"],
+               amount_cents=3_000)
+    with pytest.raises(DBAPIError, match="does not match"):
+        with engine.begin() as c:
+            c.execute(text("INSERT INTO installment_plans (user_id, transaction_id, card_account_id, total_cents, "
+                           "months, first_closing) VALUES (1, :t, :c, 9999, 3, current_date)"),
+                      {"t": t["id"], "c": book["card"]["id"]})

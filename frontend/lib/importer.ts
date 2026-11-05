@@ -6,11 +6,12 @@ export const DESC_PREFIX = "imp_desc_";
 export interface PreviewRow {
   row: number; occurred_on: string; description: string; amount_cents: number;
   direction: "outflow" | "inflow"; fingerprint: string;
-  status: "new" | "duplicate" | "imported"; duplicate_of: number | null;
+  status: "new" | "duplicate" | "imported" | "installment"; duplicate_of: number | null;
 }
 export interface PreviewResult {
   account_id: number; positive_is_outflow: boolean; rows: PreviewRow[];
-  summary: { total: number; new: number; duplicates: number; imported: number };
+  summary: { total: number; new: number; duplicates: number; imported: number; installments?: number };
+  date_order?: "dmy" | "mdy";
 }
 export interface CommitRow {
   row: number; fingerprint: string; occurred_on: string; description: string; amount_cents: number;

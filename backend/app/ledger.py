@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from . import schemas as s
-from .installments import first_closing
+from .installments import billed_count, first_closing
 from .models import SUBTYPE_CLASS, Account, AuditLog, Entry, InstallmentPlan, Obligation, Transaction, User
 
 OPENING_EQUITY = "Saldos iniciales"
@@ -315,11 +315,23 @@ def update_account(db: Session, user: User, account_id: int, p: s.AccountUpdate)
     data = p.model_dump(exclude_unset=True)
     if acc.subtype != "credit_card" and any(k in data for k in ("credit_limit_cents", "statement_day", "due_day")):
         raise LedgerError("Límite, día de corte y día de pago sólo aplican a tarjetas de crédito")
+    if "statement_day" in data and data["statement_day"] != acc.statement_day and _has_open_plans(db, acc):
+        # Las mensualidades MSI se calcularon con el día de corte actual; cambiarlo facturaría de más o de menos.
+        raise LedgerError("No se puede cambiar el día de corte mientras haya compras a meses sin intereses vigentes")
     for k, v in data.items():
         setattr(acc, k, v)
     audit(db, user, "account", acc.id, "update", p.model_dump(mode="json", exclude_unset=True))
     db.flush()
     return acc
+
+
+def _has_open_plans(db: Session, card: Account) -> bool:
+    rows = db.execute(
+        select(InstallmentPlan.months, InstallmentPlan.first_closing)
+        .join(Transaction, Transaction.id == InstallmentPlan.transaction_id)
+        .where(InstallmentPlan.card_account_id == card.id, Transaction.voided_at.is_(None))
+    ).all()
+    return any(billed_count(first, months, card.statement_day, date.today()) < months for months, first in rows)
 
 
 def archive_account(db: Session, user: User, account_id: int) -> Account:

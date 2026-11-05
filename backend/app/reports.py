@@ -68,15 +68,16 @@ def billed_at_closing(plans, statement_day: int, closing: date) -> int:
     return sum(msi.billed_at(p.total_cents, p.months, p.first_closing, statement_day, closing) for p, _ in plans)
 
 
-def minimum_due(statement_due: int, msi_billed: int, credit_limit: int | None) -> int:
+def minimum_due(statement_due: int, msi_billed: int, credit_limit: int | None, overdue: int = 0) -> int:
     """Pago mínimo ESTIMADO (criterio Banxico): mayor entre 1.5 % del saldo revolvente del estado y
-    1.25 % del límite, más las mensualidades MSI del periodo; nunca mayor que el pago del estado.
-    No incluye intereses ni IVA (si el banco los cargó, regístralos y se sumarán al saldo)."""
+    1.25 % del límite, más las mensualidades MSI del periodo y lo vencido de estados anteriores (completo);
+    nunca mayor que el pago del estado. No incluye intereses ni IVA."""
     if statement_due <= 0:
         return 0
-    revolving = max(0, statement_due - msi_billed)
+    overdue = min(max(0, overdue), statement_due)
+    revolving = max(0, statement_due - msi_billed - overdue)
     base = max(msi.pct_ceil(revolving, 150), msi.pct_ceil(credit_limit or 0, 125))
-    return min(statement_due, base + msi_billed)
+    return min(statement_due, base + msi_billed + overdue)
 
 
 def installment_rows(db: Session, card: Account, today: date) -> list[dict]:
@@ -93,62 +94,82 @@ def installment_rows(db: Session, card: Account, today: date) -> list[dict]:
     return rows
 
 
+def _owed_until(db: Session, card: Account, as_of: date) -> int:
+    return -int(db.scalar(
+        select(func.coalesce(func.sum(Entry.amount_cents), 0)).join(Transaction)
+        .where(Entry.account_id == card.id, Transaction.occurred_on <= as_of)))
+
+
+MAX_PROJECTED_CYCLES = 24
+
+
 def card_status(db: Session, card: Account, today: date) -> dict:
+    """Estado de la tarjeta a `today`. `cycles` lista los pagos por ciclo (estado actual pendiente, siguiente
+    ciclo con lo ya comprado y mensualidades MSI posteriores), con tope de lo realmente adeudado."""
     # Sólo cuenta lo ocurrido hasta hoy: las operaciones con fecha futura aparecen al llegar su fecha.
-    owed = -int(
-        db.scalar(
-            select(func.coalesce(func.sum(Entry.amount_cents), 0))
-            .join(Transaction)
-            .where(Entry.account_id == card.id, Transaction.occurred_on <= today)
-        )
-    )
+    owed = _owed_until(db, card, today)
     out = {
         "id": card.id, "name": card.name, "owed_cents": owed, "credit_limit_cents": card.credit_limit_cents,
         "available_credit_cents": (card.credit_limit_cents - owed) if card.credit_limit_cents is not None else None,
         "next_due_date": None, "statement_due_cents": None, "overdue": False, "deferred_cents": 0,
-        "minimum_due_cents": None, "statement_closing": None,
+        "minimum_due_cents": None, "statement_closing": None, "cycles": [],
     }
     if not (card.statement_day and card.due_day):
         return out
+    S, D = card.statement_day, card.due_day
     plans = active_plans(db, card, today)
-    out["deferred_cents"] = deferred_cents(plans, card.statement_day, today)
-    closing = clamp(today.year, today.month, card.statement_day)
+    out["deferred_cents"] = deferred_cents(plans, S, today)
+    closing = clamp(today.year, today.month, S)
     if closing > today:
-        closing = add_months(closing, -1, card.statement_day)
-    due = due_after_closing(closing, card.statement_day, card.due_day)
-    owed_at_close = -int(
-        db.scalar(
-            select(func.coalesce(func.sum(Entry.amount_cents), 0))
-            .join(Transaction)
-            .where(Entry.account_id == card.id, Transaction.occurred_on <= closing)
-        )
-    )
-    statement_due = max(0, owed_at_close - deferred_cents(plans, card.statement_day, closing)
-                        - _credits(db, card, closing, today))
-    if statement_due > 0:
-        out.update(next_due_date=due, statement_due_cents=statement_due, overdue=due < today, statement_closing=closing,
-                   minimum_due_cents=minimum_due(statement_due, billed_at_closing(plans, card.statement_day, closing),
-                                                 card.credit_limit_cents))
+        closing = add_months(closing, -1, S)
+    due = due_after_closing(closing, S, D)
+
+    # Estado anterior: lo que quedó sin pagar a su fecha límite se arrastra completo (vencido).
+    prev_close = add_months(closing, -1, S)
+    prev_due = due_after_closing(prev_close, S, D)
+    stmt_prev = max(0, _owed_until(db, card, prev_close) - deferred_cents(plans, S, prev_close))
+    carried = max(0, stmt_prev - _credits(db, card, prev_close, closing)) if prev_due <= closing else 0
+
+    # Estado del último corte.
+    stmt_at_cut = max(0, _owed_until(db, card, closing) - deferred_cents(plans, S, closing))
+    credits_after = _credits(db, card, closing, today)
+    cur_remaining = max(0, stmt_at_cut - credits_after)
+    min_at_cut = minimum_due(stmt_at_cut, billed_at_closing(plans, S, closing), card.credit_limit_cents, carried)
+    cur_min = max(0, min_at_cut - credits_after)  # lo pagado desde el corte cuenta para el mínimo
+
+    # Siguiente ciclo: todo lo ya comprado que no pertenece al estado actual, menos lo MSI aún diferido.
+    next_close = add_months(closing, 1, S)
+    next_due = due_after_closing(next_close, S, D)
+    next_est = max(0, owed - cur_remaining - deferred_cents(plans, S, next_close))
+    next_min = minimum_due(next_est, billed_at_closing(plans, S, next_close), card.credit_limit_cents)
+
+    prev_unpaid_now = stmt_prev - _credits(db, card, prev_close, today)  # pagos a la deuda más antigua
+    overdue = (cur_remaining > 0 and due < today) or (prev_due < today and prev_unpaid_now > 0)
+    if cur_remaining > 0:
+        out.update(next_due_date=due, statement_due_cents=cur_remaining, minimum_due_cents=cur_min,
+                   statement_closing=closing)
     else:
-        # Estado cubierto: se muestra el siguiente ciclo, estimado con el saldo actual.
-        next_close = add_months(closing, 1, card.statement_day)
-        est = max(0, owed - deferred_cents(plans, card.statement_day, next_close))
-        out.update(next_due_date=due_after_closing(next_close, card.statement_day, card.due_day),
-                   statement_due_cents=est, statement_closing=next_close,
-                   minimum_due_cents=minimum_due(est, billed_at_closing(plans, card.statement_day, next_close),
-                                                 card.credit_limit_cents))
-    # F12: si el estado ANTERIOR venció sin cubrirse, la tarjeta sigue marcada como vencida.
-    prev_close = add_months(closing, -1, card.statement_day)
-    prev_due = due_after_closing(prev_close, card.statement_day, card.due_day)
-    if not out["overdue"] and prev_due < today:
-        owed_prev = -int(db.scalar(
-            select(func.coalesce(func.sum(Entry.amount_cents), 0)).join(Transaction)
-            .where(Entry.account_id == card.id, Transaction.occurred_on <= prev_close)))
-        # Los pagos se aplican a la deuda más antigua: cuenta todo lo pagado después de ese corte.
-        unpaid_prev = owed_prev - deferred_cents(plans, card.statement_day, prev_close) \
-            - _credits(db, card, prev_close, today)
-        if unpaid_prev > 0:
-            out["overdue"] = True
+        out.update(next_due_date=next_due, statement_due_cents=next_est, minimum_due_cents=next_min,
+                   statement_closing=next_close)
+    out["overdue"] = overdue
+
+    # Ciclos para vencimientos y proyección (el ciclo actual se incluye aunque esté en 0, para emparejar
+    # obligaciones de pago de tarjeta con su ciclo).
+    pool = max(0, owed)
+    cycles = [{"closing": closing, "due_date": due, "amount_cents": cur_remaining, "overdue": overdue}]
+    pool -= cur_remaining
+    amt = min(next_est, max(0, pool))
+    cycles.append({"closing": next_close, "due_date": next_due, "amount_cents": amt, "overdue": False})
+    pool -= amt
+    for j in range(2, MAX_PROJECTED_CYCLES + 1):
+        if pool <= 0 or not plans:
+            break
+        close_j = add_months(closing, j, S)
+        amt = min(billed_at_closing(plans, S, close_j), pool)
+        pool -= amt
+        cycles.append({"closing": close_j, "due_date": due_after_closing(close_j, S, D), "amount_cents": amt,
+                       "overdue": False})
+    out["cycles"] = cycles
     return out
 
 
@@ -186,54 +207,40 @@ def upcoming(db: Session, user: User, today: date, days: int = 30) -> list[dict]
     )
     has_child = set(db.scalars(select(Obligation.generated_from_id).where(
         Obligation.user_id == user.id, Obligation.generated_from_id.is_not(None))))
-    covered_cards = {o.target_account_id for o in pending if o.kind == "card_payment"}
     card_list = cards(db, user, today)
-    card_need = {c["id"]: c["statement_due_cents"] for c in card_list if c["statement_due_cents"] is not None}
+    cycles = {c["id"]: c["cycles"] for c in card_list if c["cycles"]}
+    covered: set[tuple[int, int]] = set()  # (tarjeta, ciclo) ya representado por una obligación
     for o in pending:
         when, step = o.due_date, {"monthly": 1, "yearly": 12}.get(o.recurrence)
-        amount = o.amount_cents
-        if o.kind == "card_payment" and o.target_account_id in card_need:
-            # F7: si la tarjeta ya se pagó directamente, el vencimiento sólo cuenta por lo que falte.
-            amount = min(amount, card_need[o.target_account_id])
-            if amount == 0:
-                continue
         n = 0
         while when <= horizon:
-            items.append({
-                "source": "obligation", "ref_id": o.id, "name": o.name, "due_date": when,
-                "amount_cents": amount if n == 0 else o.amount_cents, "direction": o.direction,
-                "overdue": when < today,
-            })
+            amount = o.amount_cents
+            if o.kind == "card_payment" and o.target_account_id in cycles:
+                # F7: el vencimiento cuenta sólo por lo que exige el ciclo de tarjeta al que corresponde
+                # (el de fecha límite más cercana); si ya se pagó directamente, no cuenta.
+                cyc = cycles[o.target_account_id]
+                idx = min(range(len(cyc)), key=lambda i: abs((cyc[i]["due_date"] - when).days))
+                covered.add((o.target_account_id, idx))
+                amount = min(amount, cyc[idx]["amount_cents"])
+            if amount > 0:
+                items.append({
+                    "source": "obligation", "ref_id": o.id, "name": o.name, "due_date": when,
+                    "amount_cents": amount, "direction": o.direction, "overdue": when < today,
+                })
             if not step or o.id in has_child:  # la siguiente ya existe como obligación real
                 break
             n += 1
             when = add_months(o.due_date, step * n, o.anchor_day or o.due_date.day)
     for c in card_list:
-        if c["id"] in covered_cards or not c["next_due_date"] or not c["statement_due_cents"]:
-            continue
-        if c["next_due_date"] <= horizon:
+        for i, cy in enumerate(c["cycles"]):
+            if (c["id"], i) in covered or cy["amount_cents"] <= 0 or cy["due_date"] > horizon:
+                continue
             items.append({
-                "source": "card", "ref_id": c["id"], "name": f"Pago tarjeta {c['name']}",
-                "due_date": c["next_due_date"], "amount_cents": c["statement_due_cents"], "direction": "outflow",
-                "overdue": c["overdue"],
+                "source": "card", "ref_id": c["id"],
+                "name": f"Pago tarjeta {c['name']}" if i <= 1 else f"MSI tarjeta {c['name']}",
+                "due_date": cy["due_date"], "amount_cents": cy["amount_cents"], "direction": "outflow",
+                "overdue": cy["overdue"],
             })
-    # Ciclos futuros de tarjeta: sólo lo ya comprometido (mensualidades MSI), sin inventar consumo.
-    for c in card_list:
-        if c["id"] in covered_cards or not c["statement_closing"]:
-            continue
-        card = db.get(Account, c["id"])
-        plans = active_plans(db, card, today)
-        j = 1
-        while plans:
-            close_j = add_months(c["statement_closing"], j, card.statement_day)
-            due_j = due_after_closing(close_j, card.statement_day, card.due_day)
-            if due_j > horizon:
-                break
-            amt = billed_at_closing(plans, card.statement_day, close_j)
-            if amt:
-                items.append({"source": "card", "ref_id": c["id"], "name": f"MSI tarjeta {c['name']}",
-                              "due_date": due_j, "amount_cents": amt, "direction": "outflow", "overdue": False})
-            j += 1
     # Mismo día: entradas antes que salidas (evita mínimos proyectados que no ocurren).
     items.sort(key=lambda i: (i["due_date"], i["direction"] != "inflow", i["source"], i["ref_id"]))
     return items

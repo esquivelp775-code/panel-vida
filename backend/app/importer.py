@@ -16,6 +16,7 @@ from datetime import date, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from . import installments as msi
 from . import ledger
 from . import schemas as s
 from .models import Account, Entry, Transaction, User
@@ -60,16 +61,35 @@ def parse_amount(raw: str) -> int | None:
     return -cents if neg else cents
 
 
-def parse_date(raw: str) -> date:
+_SLASH_DATE = re.compile(r"^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$")
+_INSTALLMENT_RE = re.compile(r"\b(\d{1,2})\s*(?:/|de)\s*(\d{1,2})\b")
+
+
+def detect_date_order(values: list[str]) -> str:
+    """'dmy' (México, por defecto) o 'mdy' según la evidencia del archivo; error si se contradice."""
+    dmy = mdy = False
+    for v in values:
+        m = _SLASH_DATE.match((v or "").strip())
+        if m:
+            a, b = int(m[1]), int(m[2])
+            dmy |= a > 12
+            mdy |= b > 12
+    if dmy and mdy:
+        raise ledger.LedgerError("El archivo mezcla fechas día/mes y mes/día; corrige el formato de fechas")
+    return "mdy" if mdy else "dmy"
+
+
+def parse_date(raw: str, order: str = "dmy") -> date:
     t = (raw or "").strip()
     m = re.match(r"^(\d{4})-(\d{2})-(\d{2})", t)
     if m:
         return date(int(m[1]), int(m[2]), int(m[3]))
-    m = re.match(r"^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$", t)  # formato mexicano: día/mes/año
+    m = _SLASH_DATE.match(t)
     if m:
         y = int(m[3])
         y = y + 2000 if y < 100 else y
-        return date(y, int(m[2]), int(m[1]))
+        day, month = (int(m[1]), int(m[2])) if order == "dmy" else (int(m[2]), int(m[1]))
+        return date(y, month, day)
     raise ValueError(f"fecha inválida «{raw}» (usa AAAA-MM-DD o DD/MM/AAAA)")
 
 
@@ -86,7 +106,7 @@ def fingerprint(account_id: int, d: date, amount: int, direction: str, desc: str
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
-def parse_csv(text: str, account: Account, positive_is_outflow: bool) -> list[dict]:
+def parse_csv(text: str, account: Account, positive_is_outflow: bool) -> tuple[list[dict], str]:
     sample = text[:4096]
     try:
         dialect = csv.Sniffer().sniff(sample, delimiters=",;\t|")
@@ -106,11 +126,12 @@ def parse_csv(text: str, account: Account, positive_is_outflow: bool) -> list[di
             "No se reconocieron las columnas. Se necesitan: Fecha, Descripción/Concepto y Monto "
             "(o Cargo y Abono). Encabezados encontrados: " + ", ".join(header)
         )
+    order = detect_date_order([r[di] for r in rows[1:] if di < len(r)])
     out, seen = [], {}
     for n, r in enumerate(rows[1:], start=2):
         cell = lambda i: r[i] if i is not None and i < len(r) else ""  # noqa: E731
         try:
-            d = parse_date(cell(di))
+            d = parse_date(cell(di), order)
             if ai is not None and (cell(oi) == cell(ii) == ""):
                 amt = parse_amount(cell(ai))
                 if amt is None or amt == 0:
@@ -134,7 +155,23 @@ def parse_csv(text: str, account: Account, positive_is_outflow: bool) -> list[di
         seen[key] = seen.get(key, 0) + 1
         out.append({"row": n, "occurred_on": d, "description": desc, "amount_cents": cents, "direction": direction,
                     "fingerprint": fingerprint(account.id, d, cents, direction, desc, seen[key])})
-    return out
+    return out, order
+
+
+def _active_import_fps(db: Session, user: User) -> set[str]:
+    """Huellas importadas cuyo movimiento sigue vigente (una importación anulada se puede repetir)."""
+    keys = db.scalars(select(Transaction.idempotency_key).where(
+        Transaction.user_id == user.id, Transaction.idempotency_key.startswith("import:"),
+        Transaction.voided_at.is_(None)))
+    return {k.split(":")[1] for k in keys}
+
+
+def _looks_like_installment(desc: str) -> bool:
+    for m in _INSTALLMENT_RE.finditer(desc):
+        k, n = int(m[1]), int(m[2])
+        if 1 <= k <= n and 2 <= n <= 60:
+            return True
+    return False
 
 
 def preview(db: Session, user: User, p: s.ImportPreviewIn) -> dict:
@@ -142,37 +179,56 @@ def preview(db: Session, user: User, p: s.ImportPreviewIn) -> dict:
     if acc.account_class not in ("asset", "liability") or acc.is_system:
         raise ledger.LedgerError("Sólo se importan estados de cuentas, tarjetas o préstamos")
     positive_is_outflow = p.positive_is_outflow if p.positive_is_outflow is not None else acc.subtype == "credit_card"
-    rows = parse_csv(p.csv_text, acc, positive_is_outflow)
+    rows, order = parse_csv(p.csv_text, acc, positive_is_outflow)
     if not rows:
-        return {"account_id": acc.id, "rows": [], "summary": {"total": 0, "new": 0, "duplicates": 0, "imported": 0}}
-    keys = {f"import:{r['fingerprint']}" for r in rows}
-    imported = set(db.scalars(select(Transaction.idempotency_key).where(
-        Transaction.user_id == user.id, Transaction.idempotency_key.in_(keys))))
-    # Candidatos a duplicado: movimientos existentes de la cuenta, mismo sentido y monto, ±3 días.
+        return {"account_id": acc.id, "positive_is_outflow": positive_is_outflow, "date_order": order, "rows": [],
+                "summary": {"total": 0, "new": 0, "duplicates": 0, "imported": 0, "installments": 0}}
+    active = _active_import_fps(db, user)
+    file_fps = {r["fingerprint"] for r in rows}
+    # Candidatos a duplicado: movimientos vigentes de la cuenta (manuales o de importaciones de OTRO archivo,
+    # p. ej. el pago de tarjeta importado desde el estado de la cuenta de débito), mismo sentido y monto, ±3 días.
     lo = min(r["occurred_on"] for r in rows) - timedelta(days=3)
     hi = max(r["occurred_on"] for r in rows) + timedelta(days=3)
-    existing = db.execute(
-        select(Transaction.id, Transaction.occurred_on, Entry.amount_cents)
-        .join(Entry, Entry.transaction_id == Transaction.id)
-        .where(Entry.account_id == acc.id, Transaction.voided_at.is_(None), Transaction.kind != "reversal",
-               Transaction.occurred_on.between(lo, hi), ~Transaction.idempotency_key.startswith("import:")
-               | Transaction.idempotency_key.is_(None))
-    ).all()
+    existing = [
+        (tid, d, amt) for tid, d, amt, key in db.execute(
+            select(Transaction.id, Transaction.occurred_on, Entry.amount_cents, Transaction.idempotency_key)
+            .join(Entry, Entry.transaction_id == Transaction.id)
+            .where(Entry.account_id == acc.id, Transaction.voided_at.is_(None), Transaction.kind != "reversal",
+                   Transaction.occurred_on.between(lo, hi))
+        )
+        if not (key and key.startswith("import:") and key.split(":")[1] in file_fps)
+    ]
+    installment_amounts: set[int] = set()
+    if acc.subtype == "credit_card":
+        from .reports import active_plans  # import local: reports depende de ledger
+
+        installment_amounts = {a for p_, _ in active_plans(db, acc, hi) for a in msi.schedule(p_.total_cents, p_.months)}
     used: set[int] = set()
     out = []
     for r in rows:
+        if r["fingerprint"] in active:
+            out.append({**r, "status": "imported", "duplicate_of": None})
+            continue
         # Débito positivo: una entrada (depósito, pago a la tarjeta) es + tanto en activos como en pasivos.
         raw = r["amount_cents"] if r["direction"] == "inflow" else -r["amount_cents"]
         dup = next((tid for tid, d, amt in existing if tid not in used and amt == raw
                     and abs((d - r["occurred_on"]).days) <= 3), None)
         if dup:
             used.add(dup)
-        status = "imported" if f"import:{r['fingerprint']}" in imported else ("duplicate" if dup else "new")
+            status = "duplicate"
+        elif acc.subtype == "credit_card" and r["direction"] == "outflow" and (
+                _looks_like_installment(r["description"]) or r["amount_cents"] in installment_amounts):
+            # Mensualidad de una compra a MSI ya registrada completa: importarla duplicaría el gasto.
+            status = "installment"
+        else:
+            status = "new"
         out.append({**r, "status": status, "duplicate_of": dup})
-    summary = {"total": len(out), **{k: sum(1 for r in out if r["status"] == k)
-                                     for k in ("new", "duplicate", "imported")}}
-    summary["duplicates"] = summary.pop("duplicate")
-    return {"account_id": acc.id, "positive_is_outflow": positive_is_outflow, "rows": out, "summary": summary}
+    summary = {"total": len(out), "new": sum(r["status"] == "new" for r in out),
+               "duplicates": sum(r["status"] == "duplicate" for r in out),
+               "imported": sum(r["status"] == "imported" for r in out),
+               "installments": sum(r["status"] == "installment" for r in out)}
+    return {"account_id": acc.id, "positive_is_outflow": positive_is_outflow, "date_order": order, "rows": out,
+            "summary": summary}
 
 
 def _row_payload(acc: Account, r: s.ImportRowIn) -> s.BaseModel:
@@ -199,12 +255,17 @@ def _row_payload(acc: Account, r: s.ImportRowIn) -> s.BaseModel:
 def commit(db: Session, user: User, p: s.ImportCommitIn) -> dict:
     acc = ledger.get_account(db, user, p.account_id)
     created, skipped = [], 0
+    active = _active_import_fps(db, user)
     for r in p.rows:
-        key = f"import:{r.fingerprint}"
-        if db.scalar(select(Transaction.id).where(Transaction.user_id == user.id,
-                                                  Transaction.idempotency_key == key)):
+        if r.fingerprint in active:
             skipped += 1
             continue
+        # Si una importación previa de esta fila se anuló, se usa una clave nueva (la anterior queda en historial).
+        key, n = f"import:{r.fingerprint}", 0
+        while db.scalar(select(Transaction.id).where(Transaction.user_id == user.id,
+                                                     Transaction.idempotency_key == key)):
+            n += 1
+            key = f"import:{r.fingerprint}:r{n}"
         try:
             tx, _ = ledger.record(db, user, _row_payload(acc, r), idempotency_key=key)
         except ledger.LedgerError as e:

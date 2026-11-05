@@ -53,7 +53,7 @@ def test_preview_cargo_abono_and_identical_rows(api, book):
     assert [(r["direction"], r["amount_cents"]) for r in rows] == [
         ("outflow", 123_456), ("inflow", 1_500_000), ("outflow", 123_456), ("outflow", 200_000)]
     assert len({r["fingerprint"] for r in rows}) == 4  # dos OXXO idénticos en fechas distintas → huellas distintas
-    assert p["summary"] == {"total": 4, "new": 4, "imported": 0, "duplicates": 0}
+    assert p["summary"] == {"total": 4, "new": 4, "imported": 0, "duplicates": 0, "installments": 0}
 
 
 def test_commit_creates_and_reimport_is_idempotent(api, book):

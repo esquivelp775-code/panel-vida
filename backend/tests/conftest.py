@@ -30,6 +30,12 @@ def migrated():
     cfg = Config(os.path.join(HERE, "alembic.ini"))
     cfg.set_main_option("script_location", os.path.join(HERE, "migrations"))
     cfg.attributes["database_url"] = os.environ["PANEL_DATABASE_URL"]
+    # Datos de una ejecución anterior (p. ej. tipos añadidos por migraciones nuevas) impedirían el downgrade.
+    with engine.begin() as c:
+        tables = c.execute(text("SELECT string_agg(quote_ident(tablename), ', ') FROM pg_tables "
+                                "WHERE schemaname = 'public' AND tablename <> 'alembic_version'")).scalar()
+        if tables:
+            c.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
     command.downgrade(cfg, "base")
     command.upgrade(cfg, "head")
     yield

@@ -160,7 +160,7 @@ function Importar() {
   return (
     <>
       <PageTitle right={<button type="button" className="min-h-11 text-sm font-semibold text-emerald-700 dark:text-emerald-400" onClick={() => { setPreview(null); setError(null); }}>Cambiar archivo</button>}>Revisar importación</PageTitle>
-      <p className="mb-2 text-sm text-slate-500">{account?.name}</p>
+      <p className="mb-2 text-sm text-slate-500">{account?.name} · fechas leídas como {preview.date_order === "mdy" ? "mes/día/año" : "día/mes/año"}</p>
       <Card className="mb-3">
         <div className="grid grid-cols-4 gap-1 text-center text-xs">
           <div><p className="text-lg font-bold">{s.total}</p>total</div>
@@ -194,6 +194,12 @@ function Importar() {
                   </span>
                 </label>
                 {locked && <p className="mt-1 text-xs text-slate-500">Ya importada</p>}
+                {r.status === "installment" && (
+                  <p className="mt-1 text-xs">
+                    <span className="rounded-full bg-sky-600 px-2 py-0.5 font-semibold text-white">Mensualidad MSI</span>{" "}
+                    Parece la mensualidad de una compra a meses ya registrada completa; importarla duplicaría el gasto.
+                  </p>
+                )}
                 {r.status === "duplicate" && (
                   <p className="mt-1 text-xs">
                     <span className="rounded-full bg-amber-500 px-2 py-0.5 font-semibold text-white">Posible duplicado</span>{" "}
