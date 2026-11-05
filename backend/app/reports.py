@@ -64,6 +64,21 @@ def deferred_cents(plans, statement_day: int, as_of: date) -> int:
                for p, t in plans)
 
 
+def billed_at_closing(plans, statement_day: int, closing: date) -> int:
+    return sum(msi.billed_at(p.total_cents, p.months, p.first_closing, statement_day, closing) for p, _ in plans)
+
+
+def minimum_due(statement_due: int, msi_billed: int, credit_limit: int | None) -> int:
+    """Pago mínimo ESTIMADO (criterio Banxico): mayor entre 1.5 % del saldo revolvente del estado y
+    1.25 % del límite, más las mensualidades MSI del periodo; nunca mayor que el pago del estado.
+    No incluye intereses ni IVA (si el banco los cargó, regístralos y se sumarán al saldo)."""
+    if statement_due <= 0:
+        return 0
+    revolving = max(0, statement_due - msi_billed)
+    base = max(msi.pct_ceil(revolving, 150), msi.pct_ceil(credit_limit or 0, 125))
+    return min(statement_due, base + msi_billed)
+
+
 def installment_rows(db: Session, card: Account, today: date) -> list[dict]:
     rows = []
     for p, t in active_plans(db, card, today):
@@ -91,6 +106,7 @@ def card_status(db: Session, card: Account, today: date) -> dict:
         "id": card.id, "name": card.name, "owed_cents": owed, "credit_limit_cents": card.credit_limit_cents,
         "available_credit_cents": (card.credit_limit_cents - owed) if card.credit_limit_cents is not None else None,
         "next_due_date": None, "statement_due_cents": None, "overdue": False, "deferred_cents": 0,
+        "minimum_due_cents": None, "statement_closing": None,
     }
     if not (card.statement_day and card.due_day):
         return out
@@ -107,28 +123,46 @@ def card_status(db: Session, card: Account, today: date) -> dict:
             .where(Entry.account_id == card.id, Transaction.occurred_on <= closing)
         )
     )
-    # Créditos posteriores al corte (pagos, devoluciones); se excluyen operaciones anuladas y reversiones,
-    # que ya se netean por fecha original.
-    credits_after = int(
-        db.scalar(
-            select(func.coalesce(func.sum(Entry.amount_cents), 0))
-            .join(Transaction)
-            .where(
-                Entry.account_id == card.id, Entry.amount_cents > 0, Transaction.occurred_on > closing,
-                Transaction.occurred_on <= today, Transaction.voided_at.is_(None), Transaction.kind != "reversal",
-            )
-        )
-    )
-    # MSI: al corte sólo se exige lo ya facturado; lo diferido se paga en cortes futuros.
-    statement_due = max(0, owed_at_close - deferred_cents(plans, card.statement_day, closing) - credits_after)
+    statement_due = max(0, owed_at_close - deferred_cents(plans, card.statement_day, closing)
+                        - _credits(db, card, closing, today))
     if statement_due > 0:
-        out.update(next_due_date=due, statement_due_cents=statement_due, overdue=due < today)
+        out.update(next_due_date=due, statement_due_cents=statement_due, overdue=due < today, statement_closing=closing,
+                   minimum_due_cents=minimum_due(statement_due, billed_at_closing(plans, card.statement_day, closing),
+                                                 card.credit_limit_cents))
     else:
         # Estado cubierto: se muestra el siguiente ciclo, estimado con el saldo actual.
         next_close = add_months(closing, 1, card.statement_day)
+        est = max(0, owed - deferred_cents(plans, card.statement_day, next_close))
         out.update(next_due_date=due_after_closing(next_close, card.statement_day, card.due_day),
-                   statement_due_cents=max(0, owed - deferred_cents(plans, card.statement_day, next_close)))
+                   statement_due_cents=est, statement_closing=next_close,
+                   minimum_due_cents=minimum_due(est, billed_at_closing(plans, card.statement_day, next_close),
+                                                 card.credit_limit_cents))
+    # F12: si el estado ANTERIOR venció sin cubrirse, la tarjeta sigue marcada como vencida.
+    prev_close = add_months(closing, -1, card.statement_day)
+    prev_due = due_after_closing(prev_close, card.statement_day, card.due_day)
+    if not out["overdue"] and prev_due < today:
+        owed_prev = -int(db.scalar(
+            select(func.coalesce(func.sum(Entry.amount_cents), 0)).join(Transaction)
+            .where(Entry.account_id == card.id, Transaction.occurred_on <= prev_close)))
+        # Los pagos se aplican a la deuda más antigua: cuenta todo lo pagado después de ese corte.
+        unpaid_prev = owed_prev - deferred_cents(plans, card.statement_day, prev_close) \
+            - _credits(db, card, prev_close, today)
+        if unpaid_prev > 0:
+            out["overdue"] = True
     return out
+
+
+def _credits(db: Session, card: Account, after: date, until: date) -> int:
+    """Créditos (pagos, devoluciones) en (after, until]; excluye anuladas y reversiones, que se netean
+    en su fecha original."""
+    return int(db.scalar(
+        select(func.coalesce(func.sum(Entry.amount_cents), 0))
+        .join(Transaction)
+        .where(
+            Entry.account_id == card.id, Entry.amount_cents > 0, Transaction.occurred_on > after,
+            Transaction.occurred_on <= until, Transaction.voided_at.is_(None), Transaction.kind != "reversal",
+        )
+    ))
 
 
 def cards(db: Session, user: User, today: date) -> list[dict]:
@@ -183,6 +217,23 @@ def upcoming(db: Session, user: User, today: date, days: int = 30) -> list[dict]
                 "due_date": c["next_due_date"], "amount_cents": c["statement_due_cents"], "direction": "outflow",
                 "overdue": c["overdue"],
             })
+    # Ciclos futuros de tarjeta: sólo lo ya comprometido (mensualidades MSI), sin inventar consumo.
+    for c in card_list:
+        if c["id"] in covered_cards or not c["statement_closing"]:
+            continue
+        card = db.get(Account, c["id"])
+        plans = active_plans(db, card, today)
+        j = 1
+        while plans:
+            close_j = add_months(c["statement_closing"], j, card.statement_day)
+            due_j = due_after_closing(close_j, card.statement_day, card.due_day)
+            if due_j > horizon:
+                break
+            amt = billed_at_closing(plans, card.statement_day, close_j)
+            if amt:
+                items.append({"source": "card", "ref_id": c["id"], "name": f"MSI tarjeta {c['name']}",
+                              "due_date": due_j, "amount_cents": amt, "direction": "outflow", "overdue": False})
+            j += 1
     # Mismo día: entradas antes que salidas (evita mínimos proyectados que no ocurren).
     items.sort(key=lambda i: (i["due_date"], i["direction"] != "inflow", i["source"], i["ref_id"]))
     return items
@@ -326,10 +377,23 @@ def integrity(db: Session, user: User) -> dict:
             .where(Transaction.user_id == user.id, Transaction.voided_at.is_not(None), rev.id.is_(None))
         )
     )
+    # Cada reversión debe ser el espejo exacto de su original (mismas cuentas, montos opuestos).
+    rev_pairs = db.execute(select(Transaction.id, Transaction.reverses_id).where(
+        Transaction.user_id == user.id, Transaction.reverses_id.is_not(None))).all()
+    ids = {i for pair in rev_pairs for i in pair}
+    lines: dict[int, list[tuple[int, int]]] = {}
+    if ids:
+        for tid, aid, amt in db.execute(select(Entry.transaction_id, Entry.account_id, Entry.amount_cents)
+                                        .where(Entry.transaction_id.in_(ids))):
+            lines.setdefault(tid, []).append((aid, amt))
+    bad_reversals = [rid for rid, oid in rev_pairs
+                     if sorted(lines.get(rid, [])) != sorted((a, -m) for a, m in lines.get(oid, []))]
     bal = balances(db, user)
     archived_nonzero = [a for a in db.scalars(select(Account.id).where(
         Account.user_id == user.id, Account.archived_at.is_not(None))) if bal.get(a, 0) != 0]
-    return {"ok": not bad and ledger_sum == 0 and not voided_without_reversal and not archived_nonzero,
+    return {"ok": not bad and ledger_sum == 0 and not voided_without_reversal and not archived_nonzero
+            and not bad_reversals,
             "unbalanced_transactions": bad, "voided_without_reversal": voided_without_reversal,
+            "reversals_not_mirrored": bad_reversals,
             "archived_with_balance": archived_nonzero, "ledger_sum_cents": ledger_sum,
             "checked_transactions": len(rows)}

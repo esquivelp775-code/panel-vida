@@ -35,3 +35,20 @@ def deferred_at(total_cents: int, months: int, first: date, statement_day: int, 
         return 0
     k = billed_count(first, months, statement_day, as_of)
     return total_cents - sum(schedule(total_cents, months)[:k])
+
+
+def billed_at(total_cents: int, months: int, first: date, statement_day: int, closing: date) -> int:
+    """Mensualidad que se factura exactamente en el corte `closing` (0 si ese corte no le toca)."""
+    sched = schedule(total_cents, months)
+    for k in range(months):
+        c = add_months(first, k, statement_day)
+        if c == closing:
+            return sched[k]
+        if c > closing:
+            break
+    return 0
+
+
+def pct_ceil(cents: int, basis_points: int) -> int:
+    """Porcentaje en puntos base redondeado hacia arriba al centavo, sin floats."""
+    return -(-cents * basis_points // 10_000) if cents > 0 else 0

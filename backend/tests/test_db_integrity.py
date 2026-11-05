@@ -71,3 +71,11 @@ def test_rejected_write_leaves_no_trace(api, ids):
     test_unbalanced_transaction_rejected_at_commit(ids)
     assert api.c.get("/api/v1/transactions").json()["total"] == before
     assert api.c.get("/api/v1/reports/integrity").json()["ok"] is True
+
+
+def test_f15_db_rejects_voiding_a_reversal(api, ids):
+    r = api.c.post(f"/api/v1/transactions/{ids[2]}/void", json={"reason": "x"}).json()
+    with pytest.raises(DBAPIError, match="cannot be voided"):
+        run("UPDATE transactions SET voided_at = now(), void_reason = 'x' WHERE id = :i", i=r["id"])
+    rep = api.c.get("/api/v1/reports/integrity").json()
+    assert rep["ok"] is True and rep["reversals_not_mirrored"] == []
