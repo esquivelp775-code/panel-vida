@@ -231,3 +231,30 @@ desde hoy, obligaciones pagadas del mes, y pendientes con fecha en el mes.
 * `projected_payoff_month` = mes en que se liquida al ritmo programado (null si no hay pagos programados).
 * `avg_monthly_net_cents` = ingresos − gastos promedio de los últimos 3 meses completos; `feasible` = ese
   neto alcanza para `total_monthly_needed_cents`. `projection` = saldo total restante mes a mes pagando lo necesario.
+
+### Ryventis: CRM + ERP (v1, 2026-11-05)
+Prefijo `/ryventis`. Todo aislado por usuario. Clientes, proyectos e interacciones NO son datos financieros
+(editables). Los **cobros** sí tocan el libro: al cobrar se crea un `income` vía `ledger` y si ese ingreso se
+anula, el cobro vuelve a "por cobrar".
+
+* `Client` = `{id, name, company, phone, email, stage:"nuevo"|"charla"|"propuesta"|"cliente"|"perdido", source,
+  notes, next_step, next_step_date|null, created_at, projects_count, open_value_cents, receivable_cents}`
+* `Interaction` = `{id, client_id, kind:"mensaje"|"llamada"|"email"|"reunion"|"otro", summary, happened_on}`
+* `Project` = `{id, client_id|null, client_name|null, name, amount_cents, status:"pendiente"|"en_marcha"|"terminado"|"cancelado",
+  due_date|null, notes, created_at, tasks_total, tasks_done, collected_cents, receivable_cents}`
+* `Receivable` = `{id, project_id|null, project_name|null, client_id|null, client_name|null, description, amount_cents,
+  due_date|null, status:"por_cobrar"|"cobrado", collected_transaction_id|null, collected_on|null, overdue}`
+
+| Método | Ruta | Notas |
+|---|---|---|
+| GET/POST | `/ryventis/clients` | `?stage=` · POST `{name, company?, phone?, email?, stage?="nuevo", source?, notes?, next_step?, next_step_date?}` |
+| GET/PATCH/DELETE | `/ryventis/clients/{id}` | GET incluye `interactions` y `projects`; DELETE sólo si no tiene proyectos ni cobros |
+| POST | `/ryventis/clients/{id}/interactions` | `{kind, summary, happened_on?}` |
+| GET/POST | `/ryventis/projects` | `?status=` · POST `{name, client_id?, amount_cents?=0, status?="pendiente", due_date?, notes?}` |
+| PATCH/DELETE | `/ryventis/projects/{id}` | DELETE sólo si no tiene cobros |
+| GET/POST | `/ryventis/receivables` | `?status=` · POST `{description, amount_cents, project_id?, client_id?, due_date?}` |
+| PATCH/DELETE | `/ryventis/receivables/{id}` | sólo si `por_cobrar` |
+| POST | `/ryventis/receivables/{id}/collect` | `{account_id, category_id?, occurred_on?}` → crea ingreso; categoría por defecto "Ingresos Ryventis" (se crea si falta) |
+| GET | `/ryventis/summary` | `{pipeline:{nuevo,charla,propuesta,cliente,perdido}, pipeline_value_cents, projects:{pendiente,en_marcha,terminado}, active_value_cents, receivable_cents, overdue_receivable_cents, collected_month_cents, collected_year_cents, tasks:{pending,doing,done}, followups:[{client_id,name,next_step,next_step_date,overdue}], upcoming_deliveries:[{project_id,name,due_date,client_name}]}` |
+
+Las tareas de Ryventis siguen siendo `/tasks?area=ryventis` y aceptan `project_id` opcional.
