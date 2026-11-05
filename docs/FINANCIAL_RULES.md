@@ -85,6 +85,16 @@ Consecuencias explícitas:
 * Saldos, adeudado y disponible se calculan **hasta hoy**: operaciones con fecha futura no cuentan
   hasta su fecha.
 
+### 4b. Meses sin intereses (MSI)
+* La compra a meses es **gasto completo y deuda completa en su fecha** (R2 no cambia): el patrimonio y el
+  gasto del mes reflejan la compra entera.
+* Lo que cambia es el **pago del estado**: cada corte factura una mensualidad. Mensualidades exactas en
+  centavos (`total // meses`, el residuo se reparte un centavo en las primeras).
+* Primer corte = el primero en o después de la fecha de compra (una compra el día de corte entra en ese corte).
+* Pago del estado = saldo al corte − parte MSI aún no facturada al corte − créditos posteriores al corte.
+* El plan es inmutable (trigger). Si la compra se anula, el plan deja de contar.
+* Fuera de alcance: adelantar mensualidades, MSI con devolución parcial (se registra como `refund` normal).
+
 ## 5. Préstamos
 
 * Cuenta `loan` (pasivo). La disposición o el saldo inicial crean la deuda.
@@ -110,10 +120,12 @@ saldo mínimo proyectado y su fecha. Es una estimación: no crea transacciones.
 * Al liquidar se crea la siguiente con el **día ancla** original (31 ene → 28 feb → 31 mar).
 * Si se anula el pago, la obligación vuelve a pendiente; al volver a liquidarla **no** se duplica la
   siguiente (enlace `generated_from_id`).
+* **Omitir** (`skip`) cancela sólo esa repetición y genera la siguiente; **cancelar** termina la serie.
+* Un vencimiento de pago de tarjeta pendiente cuenta como máximo lo que el estado de la tarjeta todavía
+  exige: si la tarjeta ya se pagó directamente, no se descuenta dos veces en la proyección.
 
 ## 8. Fuera de alcance del MVP (documentado)
 
 * Multimoneda y tipos de cambio.
 * Pagos mínimos de tarjeta y cálculo real de intereses de la tarjeta.
-* Meses sin intereses (MSI) — candidato prioritario de la siguiente iteración.
 * Importación automática de estados de cuenta bancarios.

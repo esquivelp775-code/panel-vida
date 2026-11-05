@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from . import ledger
 from . import schemas as s
 from .models import Obligation, User
-from .reports import add_months
+from .dates import add_months
 
 DIRECTION = {"income_expected": "inflow"}
 
@@ -95,7 +95,14 @@ def settle(db: Session, user: User, ob_id: int, p: s.ObligationSettle) -> tuple[
         raise ledger.Conflict("La obligación no está pendiente")
     tx, _ = ledger.record(db, user, _payload(ob, p, p.occurred_on or date.today()))
     ob.status, ob.settled_transaction_id = "paid", tx.id
-    # Si ya se generó la siguiente (p. ej. se anuló el pago y se vuelve a liquidar), no se duplica.
+    nxt = _spawn_next(db, user, ob)
+    ledger.audit(db, user, "obligation", ob.id, "settle", {"transaction_id": tx.id})
+    db.flush()
+    return ob, nxt
+
+
+def _spawn_next(db: Session, user: User, ob: Obligation) -> Obligation | None:
+    """Crea la siguiente repetición. Si ya existe (p. ej. se anuló el pago y se vuelve a liquidar), no la duplica."""
     nxt = db.scalar(select(Obligation).where(Obligation.generated_from_id == ob.id))
     if ob.recurrence != "none" and nxt is None:
         months = 1 if ob.recurrence == "monthly" else 12
@@ -106,6 +113,18 @@ def settle(db: Session, user: User, ob_id: int, p: s.ObligationSettle) -> tuple[
             category_id=ob.category_id, anchor_day=ob.anchor_day or ob.due_date.day, generated_from_id=ob.id,
         )
         db.add(nxt)
-    ledger.audit(db, user, "obligation", ob.id, "settle", {"transaction_id": tx.id})
+    return nxt
+
+
+def skip(db: Session, user: User, ob_id: int) -> tuple[Obligation, Obligation]:
+    """F14: omite sólo esta repetición (queda cancelada) y conserva la serie generando la siguiente."""
+    ob = get(db, user, ob_id, lock=True)
+    if ob.status != "pending":
+        raise ledger.LedgerError("Sólo se pueden omitir obligaciones pendientes")
+    if ob.recurrence == "none":
+        raise ledger.LedgerError("Sólo se omiten repeticiones de obligaciones recurrentes; usa cancelar")
+    ob.status = "cancelled"
+    nxt = _spawn_next(db, user, ob)
+    ledger.audit(db, user, "obligation", ob.id, "skip")
     db.flush()
     return ob, nxt

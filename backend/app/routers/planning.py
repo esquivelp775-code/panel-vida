@@ -53,6 +53,14 @@ def settle_obligation(ob_id: int, body: s.ObligationSettle, db: Session = Depend
     return _ob(ob)
 
 
+@router.post("/obligations/{ob_id}/skip", response_model=s.ObligationOut)
+def skip_obligation(ob_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Omite esta repetición y devuelve la siguiente de la serie."""
+    _, nxt = obs.skip(db, user, ob_id)
+    db.commit()
+    return _ob(nxt)
+
+
 @router.post("/obligations/{ob_id}/cancel", response_model=s.ObligationOut)
 def cancel_obligation(ob_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     ob = obs.cancel(db, user, ob_id)

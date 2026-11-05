@@ -71,6 +71,17 @@ Activos, pasivos, categorías de ingreso/gasto y cuentas de capital del sistema.
 `transactions.kind` admite `refund`; `obligations.anchor_day` (día ancla de recurrencia) y
 `obligations.generated_from_id` (enlace único a la obligación que la generó).
 
+### Migración 0003 — `installment_plans`
+| columna | tipo | notas |
+|---|---|---|
+| transaction_id | FK unique | la compra con tarjeta |
+| card_account_id | FK | |
+| total_cents | bigint > 0 | ≥ months |
+| months | smallint 2..60 | |
+| first_closing | date | primer corte que factura |
+
+Trigger `trg_installment_plans_immutable` (función genérica `fn_immutable_row`) bloquea UPDATE/DELETE.
+
 ### `obligations`, `budgets`, `audit_log`
 Ver `backend/app/models.py`. `budgets` único por `(user_id, category_id, month)`.
 

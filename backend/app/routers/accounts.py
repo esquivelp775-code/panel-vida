@@ -49,6 +49,17 @@ def archive(account_id: int, db: Session = Depends(get_db), user: User = Depends
     return _out(db, acc)
 
 
+@router.get("/{account_id}/installments")
+def installments(account_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Compras a meses sin intereses vigentes de una tarjeta."""
+    from datetime import date
+
+    acc = ledger.get_account(db, user, account_id, allow_archived=True)
+    if acc.subtype != "credit_card" or not acc.statement_day:
+        return []
+    return r.installment_rows(db, acc, date.today())
+
+
 @router.post("/{account_id}/reconcile", response_model=s.ReconcileOut)
 def reconcile(account_id: int, body: s.ReconcileIn, db: Session = Depends(get_db),
               user: User = Depends(get_current_user)):

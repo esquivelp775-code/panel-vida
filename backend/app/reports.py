@@ -1,28 +1,15 @@
 """Lecturas derivadas del libro mayor. Nada aquí escribe en la BD."""
 from __future__ import annotations
 
-import calendar
 from datetime import date, timedelta
 
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.orm import Session, aliased
 
+from . import installments as msi
+from .dates import add_months, clamp, month_start  # noqa: F401  (re-exportadas para quien importe reports)
 from .ledger import natural
-from .models import LIQUID_SUBTYPES, Account, Budget, Entry, Obligation, Transaction, User
-
-
-# ------------------------------------------------------------------ fechas
-def clamp(y: int, m: int, d: int) -> date:
-    return date(y, m, min(d, calendar.monthrange(y, m)[1]))
-
-
-def add_months(d: date, n: int, day: int | None = None) -> date:
-    idx = d.year * 12 + d.month - 1 + n
-    return clamp(idx // 12, idx % 12 + 1, day or d.day)
-
-
-def month_start(d: date) -> date:
-    return d.replace(day=1)
+from .models import LIQUID_SUBTYPES, Account, Budget, Entry, InstallmentPlan, Obligation, Transaction, User
 
 
 # ------------------------------------------------------------------ saldos
@@ -60,6 +47,37 @@ def due_after_closing(closing: date, statement_day: int, due_day: int) -> date:
     return add_months(closing, 1, due_day)
 
 
+def active_plans(db: Session, card: Account, today: date) -> list[tuple[InstallmentPlan, Transaction]]:
+    """Planes MSI vigentes: compra no anulada y ya ocurrida."""
+    q = (
+        select(InstallmentPlan, Transaction)
+        .join(Transaction, Transaction.id == InstallmentPlan.transaction_id)
+        .where(InstallmentPlan.card_account_id == card.id, Transaction.voided_at.is_(None),
+               Transaction.occurred_on <= today)
+        .order_by(Transaction.occurred_on, InstallmentPlan.id)
+    )
+    return [(p, t) for p, t in db.execute(q)]
+
+
+def deferred_cents(plans, statement_day: int, as_of: date) -> int:
+    return sum(msi.deferred_at(p.total_cents, p.months, p.first_closing, statement_day, t.occurred_on, as_of)
+               for p, t in plans)
+
+
+def installment_rows(db: Session, card: Account, today: date) -> list[dict]:
+    rows = []
+    for p, t in active_plans(db, card, today):
+        sched = msi.schedule(p.total_cents, p.months)
+        k = msi.billed_count(p.first_closing, p.months, card.statement_day, today)
+        nxt = add_months(p.first_closing, k, card.statement_day) if k < p.months else None
+        rows.append({
+            "plan_id": p.id, "transaction_id": t.id, "description": t.description, "purchased_on": t.occurred_on,
+            "total_cents": p.total_cents, "months": p.months, "installment_cents": sched[0], "billed_count": k,
+            "remaining_cents": p.total_cents - sum(sched[:k]), "next_closing": nxt,
+        })
+    return rows
+
+
 def card_status(db: Session, card: Account, today: date) -> dict:
     # Sólo cuenta lo ocurrido hasta hoy: las operaciones con fecha futura aparecen al llegar su fecha.
     owed = -int(
@@ -72,10 +90,12 @@ def card_status(db: Session, card: Account, today: date) -> dict:
     out = {
         "id": card.id, "name": card.name, "owed_cents": owed, "credit_limit_cents": card.credit_limit_cents,
         "available_credit_cents": (card.credit_limit_cents - owed) if card.credit_limit_cents is not None else None,
-        "next_due_date": None, "statement_due_cents": None, "overdue": False,
+        "next_due_date": None, "statement_due_cents": None, "overdue": False, "deferred_cents": 0,
     }
     if not (card.statement_day and card.due_day):
         return out
+    plans = active_plans(db, card, today)
+    out["deferred_cents"] = deferred_cents(plans, card.statement_day, today)
     closing = clamp(today.year, today.month, card.statement_day)
     if closing > today:
         closing = add_months(closing, -1, card.statement_day)
@@ -99,14 +119,15 @@ def card_status(db: Session, card: Account, today: date) -> dict:
             )
         )
     )
-    statement_due = max(0, owed_at_close - credits_after)
+    # MSI: al corte sólo se exige lo ya facturado; lo diferido se paga en cortes futuros.
+    statement_due = max(0, owed_at_close - deferred_cents(plans, card.statement_day, closing) - credits_after)
     if statement_due > 0:
         out.update(next_due_date=due, statement_due_cents=statement_due, overdue=due < today)
     else:
         # Estado cubierto: se muestra el siguiente ciclo, estimado con el saldo actual.
         next_close = add_months(closing, 1, card.statement_day)
         out.update(next_due_date=due_after_closing(next_close, card.statement_day, card.due_day),
-                   statement_due_cents=max(0, owed))
+                   statement_due_cents=max(0, owed - deferred_cents(plans, card.statement_day, next_close)))
     return out
 
 
@@ -132,19 +153,28 @@ def upcoming(db: Session, user: User, today: date, days: int = 30) -> list[dict]
     has_child = set(db.scalars(select(Obligation.generated_from_id).where(
         Obligation.user_id == user.id, Obligation.generated_from_id.is_not(None))))
     covered_cards = {o.target_account_id for o in pending if o.kind == "card_payment"}
+    card_list = cards(db, user, today)
+    card_need = {c["id"]: c["statement_due_cents"] for c in card_list if c["statement_due_cents"] is not None}
     for o in pending:
         when, step = o.due_date, {"monthly": 1, "yearly": 12}.get(o.recurrence)
+        amount = o.amount_cents
+        if o.kind == "card_payment" and o.target_account_id in card_need:
+            # F7: si la tarjeta ya se pagó directamente, el vencimiento sólo cuenta por lo que falte.
+            amount = min(amount, card_need[o.target_account_id])
+            if amount == 0:
+                continue
         n = 0
         while when <= horizon:
             items.append({
                 "source": "obligation", "ref_id": o.id, "name": o.name, "due_date": when,
-                "amount_cents": o.amount_cents, "direction": o.direction, "overdue": when < today,
+                "amount_cents": amount if n == 0 else o.amount_cents, "direction": o.direction,
+                "overdue": when < today,
             })
             if not step or o.id in has_child:  # la siguiente ya existe como obligación real
                 break
             n += 1
             when = add_months(o.due_date, step * n, o.anchor_day or o.due_date.day)
-    for c in cards(db, user, today):
+    for c in card_list:
         if c["id"] in covered_cards or not c["next_due_date"] or not c["statement_due_cents"]:
             continue
         if c["next_due_date"] <= horizon:

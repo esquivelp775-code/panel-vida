@@ -13,7 +13,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from . import schemas as s
-from .models import SUBTYPE_CLASS, Account, AuditLog, Entry, Obligation, Transaction, User
+from .installments import first_closing
+from .models import SUBTYPE_CLASS, Account, AuditLog, Entry, InstallmentPlan, Obligation, Transaction, User
 
 OPENING_EQUITY = "Saldos iniciales"
 ADJUSTMENT_EQUITY = "Ajustes"
@@ -147,6 +148,13 @@ def build(db: Session, user: User, p: s.BaseModel) -> tuple[str, list[tuple[Acco
             if a.account_class == "liability" and a.subtype != "credit_card":
                 raise LedgerError(f"«{a.name}» es un préstamo: un gasto se paga con efectivo, cuenta o tarjeta")
         c = _require(acc(p.category_id), classes=("expense",), role="categoría de gasto")
+        if p.installments:
+            if a.subtype != "credit_card":
+                raise LedgerError("Los meses sin intereses sólo aplican a compras con tarjeta de crédito")
+            if not a.statement_day:
+                raise LedgerError(f"Configura el día de corte de «{a.name}» para registrar meses sin intereses")
+            if p.amount_cents < p.installments:
+                raise LedgerError("El monto es menor que el número de mensualidades")
         kind = "card_purchase" if a.subtype == "credit_card" else "expense"
         # R2: la compra con tarjeta registra el gasto Y aumenta lo adeudado en la tarjeta.
         return kind, [(a, -p.amount_cents), (c, p.amount_cents)]
@@ -224,6 +232,15 @@ def record(db: Session, user: User, p: s.BaseModel, idempotency_key: str | None 
         db, user, kind=kind, occurred_on=p.occurred_on, description=p.description, notes=p.notes, lines=lines,
         idempotency_key=idempotency_key, req_hash=h if idempotency_key else None,
     )
+    if getattr(p, "installments", None):
+        card = lines[0][0]
+        plan = InstallmentPlan(
+            user_id=user.id, transaction_id=tx.id, card_account_id=card.id, total_cents=p.amount_cents,
+            months=p.installments, first_closing=first_closing(p.occurred_on, card.statement_day),
+        )
+        db.add(plan)
+        db.flush()
+        audit(db, user, "installment_plan", plan.id, "create", {"transaction_id": tx.id, "months": p.installments})
     return tx, True
 
 

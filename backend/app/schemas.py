@@ -110,11 +110,15 @@ class IncomeIn(_TxBase):
     amount_cents: Cents
 
 
+Installments = Annotated[int, Field(strict=True, ge=2, le=60)]
+
+
 class ExpenseIn(_TxBase):
     kind: Literal["expense"]
     account_id: Id
     category_id: Id
     amount_cents: Cents
+    installments: Installments | None = None  # meses sin intereses; sólo con tarjeta
 
 
 class CardPurchaseIn(_TxBase):
@@ -122,6 +126,7 @@ class CardPurchaseIn(_TxBase):
     card_account_id: Id
     category_id: Id
     amount_cents: Cents
+    installments: Installments | None = None  # meses sin intereses
 
 
 class RefundIn(_TxBase):

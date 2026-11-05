@@ -145,3 +145,18 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(Text)
     payload: Mapped[dict | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class InstallmentPlan(Base):
+    """Compra a meses sin intereses: el total es deuda y gasto desde el día de compra,
+    pero cada estado de cuenta sólo exige la mensualidad correspondiente."""
+
+    __tablename__ = "installment_plans"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    transaction_id: Mapped[int] = mapped_column(ForeignKey("transactions.id", ondelete="RESTRICT"), unique=True)
+    card_account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="RESTRICT"), index=True)
+    total_cents: Mapped[int] = mapped_column(BigInteger)
+    months: Mapped[int] = mapped_column(SmallInteger)
+    first_closing: Mapped[date] = mapped_column(Date)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

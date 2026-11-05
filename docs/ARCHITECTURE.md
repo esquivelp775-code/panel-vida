@@ -97,6 +97,7 @@ due_day, interest_rate_bps, is_system, archived_at, balance_cents, created_at}`
 | GET | `/accounts/{id}` | |
 | PATCH | `/accounts/{id}` | `{name?, credit_limit_cents?, statement_day?, due_day?, interest_rate_bps?}` (no cambia tipo ni saldo) |
 | POST | `/accounts/{id}/archive` | sólo si saldo = 0 (activos/pasivos) |
+| GET | `/accounts/{id}/installments` | planes MSI vigentes: `[{plan_id, transaction_id, description, purchased_on, total_cents, months, installment_cents, billed_count, remaining_cents, next_closing}]` |
 | POST | `/accounts/{id}/reconcile` | `{statement_balance_cents, as_of, create_adjustment:false}` → `{ledger_balance_cents, statement_balance_cents, difference_cents, adjustment_transaction_id}` |
 
 Categorías = cuentas con `subtype` `income` o `expense` (se crean igual con `POST /accounts`).
@@ -107,8 +108,8 @@ Categorías = cuentas con `subtype` `income` o `expense` (se crean igual con `PO
 | kind | campos (además de `occurred_on`, `description`, `notes?`) |
 |---|---|
 | `income` | `account_id` (activo), `category_id` (income), `amount_cents` |
-| `expense` | `account_id` (activo **o tarjeta**), `category_id` (expense), `amount_cents` → si la cuenta es tarjeta se guarda como `card_purchase` |
-| `card_purchase` | `card_account_id`, `category_id`, `amount_cents` |
+| `expense` | `account_id` (activo **o tarjeta**), `category_id` (expense), `amount_cents`, `installments?` (2–60, sólo tarjeta) → si la cuenta es tarjeta se guarda como `card_purchase` |
+| `card_purchase` | `card_account_id`, `category_id`, `amount_cents`, `installments?` (meses sin intereses, 2–60; la tarjeta debe tener `statement_day`) |
 | `refund` | `account_id` (activo o tarjeta), `category_id` (expense), `amount_cents` — devolución: reduce el gasto en su fecha |
 | `transfer` | `from_account_id`, `to_account_id`, `amount_cents` → si destino es tarjeta se guarda `card_payment`; si destino es préstamo, `loan_payment` sin interés |
 | `card_payment` | `from_account_id` (activo), `card_account_id`, `amount_cents` |
@@ -143,7 +144,8 @@ pay_from_account_id, target_account_id, category_id, settled_transaction_id, cre
 | POST | `/obligations` | |
 | PATCH | `/obligations/{id}` | campos editables mientras `pending` |
 | POST | `/obligations/{id}/settle` | `{account_id?, amount_cents?, occurred_on?}` → crea la transacción correspondiente, marca `paid` y genera la siguiente si es recurrente |
-| POST | `/obligations/{id}/cancel` | |
+| POST | `/obligations/{id}/skip` | omite sólo esta repetición (queda `cancelled`) y responde la siguiente de la serie; 422 si no es recurrente |
+| POST | `/obligations/{id}/cancel` | termina la obligación (y la serie) |
 | GET | `/upcoming?days=30` | obligaciones pendientes + pagos de tarjeta calculados: `[{source:"obligation"\|"card", ref_id, name, due_date, amount_cents, direction, overdue}]` |
 
 ### Presupuestos
@@ -155,7 +157,7 @@ pay_from_account_id, target_account_id, category_id, settled_transaction_id, cre
 ### Reportes
 | Método | Ruta | Respuesta |
 |---|---|---|
-| GET | `/dashboard` | `{available_cents, total_debt_cents, net_worth_cents, month:{income_cents, expense_cents, net_cents}, cards:[{id,name,owed_cents,credit_limit_cents,available_credit_cents,next_due_date,statement_due_cents}], upcoming:[…≤10], accounts:[Account…activos]}` |
+| GET | `/dashboard` | `{available_cents, total_debt_cents, net_worth_cents, month:{income_cents, expense_cents, net_cents}, cards:[{id,name,owed_cents,credit_limit_cents,available_credit_cents,next_due_date,statement_due_cents,overdue,deferred_cents}], upcoming:[…≤10], accounts:[Account…activos]}` |
 | GET | `/reports/cashflow?date_from&date_to` | `{months:[{month:"YYYY-MM", income_cents, expense_cents, net_cents, liquid_change_cents}], totals:{…}}` |
 | GET | `/reports/by-category?date_from&date_to&account_class=expense` | `[{category_id, name, total_cents}]` |
 | GET | `/reports/projection?days=90` | `{starting_available_cents, points:[{date, event, amount_cents, balance_cents}], min_balance_cents, min_balance_date}` |
