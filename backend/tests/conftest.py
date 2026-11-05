@@ -44,7 +44,7 @@ def migrated():
 @pytest.fixture(autouse=True)
 def clean_db(migrated):
     with engine.begin() as c:
-        c.execute(text("TRUNCATE installment_plans, audit_log, budgets, obligations, entries, transactions, accounts, users "
+        c.execute(text("TRUNCATE habit_logs, habits, tasks, installment_plans, audit_log, budgets, obligations, entries, transactions, accounts, users "
                        "RESTART IDENTITY CASCADE"))
     login_limiter.reset()
     yield

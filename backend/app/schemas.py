@@ -320,3 +320,54 @@ class ImportRowIn(Strict):
 class ImportCommitIn(Strict):
     account_id: Id
     rows: Annotated[list[ImportRowIn], Field(min_length=1, max_length=2000)]
+
+
+# ------------------------------------------------------------------ vida
+Priority = Literal["low", "normal", "high"]
+Area = Literal["finanzas", "personal", "trabajo", "casa", "salud", "otro"]
+Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+
+
+class TaskCreate(Strict):
+    title: Title
+    notes: Notes | None = None
+    due_date: date | None = None
+    priority: Priority = "normal"
+    area: Area = "personal"
+
+
+class TaskUpdate(Strict):
+    title: Title | None = None
+    notes: Notes | None = None
+    due_date: date | None = None
+    priority: Priority | None = None
+    area: Area | None = None
+
+
+class TaskOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    title: str
+    notes: str | None
+    due_date: date | None
+    priority: str
+    area: str
+    status: str
+    completed_at: datetime | None
+    created_at: datetime
+
+
+class HabitCreate(Strict):
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
+    emoji: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=8)] = "✅"
+    target_per_week: Annotated[int, Field(strict=True, ge=1, le=7)] = 7
+
+
+class HabitUpdate(Strict):
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)] | None = None
+    emoji: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=8)] | None = None
+    target_per_week: Annotated[int, Field(strict=True, ge=1, le=7)] | None = None
+
+
+class HabitToggle(Strict):
+    day: date | None = None

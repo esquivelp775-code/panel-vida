@@ -160,3 +160,36 @@ class InstallmentPlan(Base):
     months: Mapped[int] = mapped_column(SmallInteger)
     first_closing: Mapped[date] = mapped_column(Date)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Task(Base):
+    """Pendiente (no financiero: se puede editar y borrar)."""
+
+    __tablename__ = "tasks"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    title: Mapped[str] = mapped_column(Text)
+    notes: Mapped[str | None] = mapped_column(Text)
+    due_date: Mapped[date | None] = mapped_column(Date)
+    priority: Mapped[str] = mapped_column(Text, default="normal")
+    area: Mapped[str] = mapped_column(Text, default="personal")
+    status: Mapped[str] = mapped_column(Text, default="pending")
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Habit(Base):
+    __tablename__ = "habits"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    name: Mapped[str] = mapped_column(Text)
+    emoji: Mapped[str] = mapped_column(Text, default="✅")
+    target_per_week: Mapped[int] = mapped_column(SmallInteger, default=7)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class HabitLog(Base):
+    __tablename__ = "habit_logs"
+    habit_id: Mapped[int] = mapped_column(ForeignKey("habits.id", ondelete="CASCADE"), primary_key=True)
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
