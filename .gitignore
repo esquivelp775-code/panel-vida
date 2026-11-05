@@ -13,3 +13,6 @@ frontend/out/
 # Misc
 *.dump
 .DS_Store
+e2e/*.png
+backup.dump
+e2e/node_modules

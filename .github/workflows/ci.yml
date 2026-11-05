@@ -46,3 +46,63 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+
+  # Stack completo como en el servidor Debian: imágenes Docker + compose + navegador real + respaldo.
+  stack:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Secretos efímeros de CI
+        run: |
+          {
+            echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)"
+            echo "PANEL_SECRET_KEY=$(openssl rand -hex 32)"
+            echo "PANEL_CORS_ORIGINS=http://localhost:8080"
+          } > .env
+      - name: Build frontend (mismo origen vía nginx)
+        working-directory: frontend
+        run: npm ci && NEXT_PUBLIC_API_URL=http://localhost:8080 npm run build
+      - name: docker compose up
+        run: |
+          docker compose up -d --build
+          for i in $(seq 1 60); do curl -fsS http://localhost:8080/api/v1/health && break; sleep 2; done
+          curl -fsS http://localhost:8080/api/v1/health
+      - name: Usuario y datos ficticios
+        run: |
+          docker compose exec -T api python -m app.cli create-user --email e2e@example.com --password e2e-password-123
+          docker compose exec -T api python -m app.cli seed-demo --email e2e@example.com
+      - name: E2E en navegador
+        working-directory: e2e
+        env:
+          BASE_URL: http://localhost:8080
+          API_URL: http://localhost:8080
+          E2E_EMAIL: e2e@example.com
+          E2E_PASSWORD: e2e-password-123
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+          npm run smoke
+      - name: Respaldo y restauración
+        run: |
+          docker compose exec -T db pg_dump -Fc -U panel panel_vida > backup.dump
+          docker compose exec -T db createdb -U panel panel_vida_restore
+          docker compose exec -T db pg_restore -U panel -d panel_vida_restore < backup.dump
+          q="SELECT count(*) || ':' || coalesce(sum(abs(amount_cents)),0) FROM entries"
+          a=$(docker compose exec -T db psql -U panel -d panel_vida -tAc "$q")
+          b=$(docker compose exec -T db psql -U panel -d panel_vida_restore -tAc "$q")
+          echo "original=$a restaurada=$b"; test "$a" = "$b"
+      - name: Logs si falla
+        if: failure()
+        run: docker compose logs --tail=200
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-screenshot
+          path: e2e/*.png
+          if-no-files-found: ignore
