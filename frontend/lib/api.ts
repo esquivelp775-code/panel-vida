@@ -85,6 +85,15 @@ export interface Projection {
   min_balance_cents: number; min_balance_date: string | null;
 }
 
+export type Priority = "low" | "normal" | "high";
+export type Area = "finanzas" | "personal" | "trabajo" | "casa" | "salud" | "otro";
+export interface Task { id: number; title: string; notes: string | null; due_date: string | null; priority: Priority; area: Area; status: "pending" | "done"; completed_at: string | null; created_at: string }
+export interface TaskCreate { title: string; notes?: string; due_date?: string | null; priority?: Priority; area?: Area }
+export interface Habit { id: number; name: string; emoji: string; target_per_week: number; streak_days: number; done_today: boolean; week_count: number; last_7: { date: string; done: boolean }[] }
+export interface CalEvent { kind: "obligation" | "card" | "task"; ref_id: number; title: string; amount_cents: number | null; direction: "outflow" | "inflow" | null; status: "pending" | "paid" | "done" | "overdue"; priority: Priority | null }
+export interface CalDay { date: string; income_cents: number; expense_cents: number; tx_count: number; habits_done: number; events: CalEvent[] }
+export interface CalMonth { month: string; today: string; totals: { income_cents: number; expense_cents: number }; days: CalDay[] }
+
 /* ---------- Núcleo ---------- */
 type Opts = { method?: string; body?: unknown; headers?: Record<string, string>; query?: Record<string, string | number | boolean | undefined | null> };
 
@@ -170,6 +179,18 @@ export const api = {
     json<import("./importer").PreviewResult>("/imports/preview", { method: "POST", body: { account_id, csv_text, ...(positive_is_outflow === undefined ? {} : { positive_is_outflow }) } }),
   importCommit: (account_id: number, rows: import("./importer").CommitRow[]) =>
     json<import("./importer").CommitResult>("/imports/commit", { method: "POST", body: { account_id, rows } }),
+  tasks: (status?: "pending" | "done") => json<Task[]>("/tasks", { query: { status } }),
+  createTask: (b: TaskCreate) => json<Task>("/tasks", { method: "POST", body: b }),
+  updateTask: (id: number, b: Partial<TaskCreate>) => json<Task>(`/tasks/${id}`, { method: "PATCH", body: b }),
+  completeTask: (id: number) => json<Task>(`/tasks/${id}/complete`, { method: "POST" }),
+  reopenTask: (id: number) => json<Task>(`/tasks/${id}/reopen`, { method: "POST" }),
+  deleteTask: async (id: number) => { await raw(`/tasks/${id}`, { method: "DELETE" }); },
+  habits: () => json<Habit[]>("/habits"),
+  createHabit: (b: { name: string; emoji?: string; target_per_week?: number }) => json<Habit>("/habits", { method: "POST", body: b }),
+  updateHabit: (id: number, b: { name?: string; emoji?: string; target_per_week?: number }) => json<Habit>(`/habits/${id}`, { method: "PATCH", body: b }),
+  toggleHabit: (id: number, day?: string) => json<Habit>(`/habits/${id}/toggle`, { method: "POST", body: day ? { day } : {} }),
+  deleteHabit: async (id: number) => { await raw(`/habits/${id}`, { method: "DELETE" }); },
+  calendar: (month: string) => json<CalMonth>("/calendar", { query: { month } }),
   upcoming: (days = 30) => json<UpcomingItem[]>("/upcoming", { query: { days } }),
 
   budgets: (month: string) => json<Budget[]>("/budgets", { query: { month } }),

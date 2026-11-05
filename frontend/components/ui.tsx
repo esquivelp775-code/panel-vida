@@ -28,7 +28,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 /* ---------- Básicos ---------- */
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 ${className}`}>{children}</section>;
+  return <section className={`pv-press rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 ${className}`}>{children}</section>;
 }
 export function H2({ children }: { children: ReactNode }) {
   return <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{children}</h2>;
@@ -113,8 +113,8 @@ export function Segmented<T extends string>({ value, onChange, options }: { valu
 export function Modal({ open, title, children, onClose }: { open: boolean; title: string; children: ReactNode; onClose: () => void }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center" role="dialog" aria-modal="true" aria-label={title} onClick={onClose}>
-      <div className="w-full max-w-md rounded-t-2xl bg-white p-4 dark:bg-slate-900 sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="pv-backdrop fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center" role="dialog" aria-modal="true" aria-label={title} onClick={onClose}>
+      <div className="pv-sheet max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 dark:bg-slate-900 sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="mb-3 text-lg font-bold">{title}</h3>
         {children}
       </div>
@@ -142,7 +142,7 @@ export function Bar({ pct, over, label }: { pct: number; over?: boolean; label?:
   const w = Math.max(0, Math.min(100, pct));
   return (
     <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" role="progressbar" aria-valuenow={Math.round(w)} aria-valuemin={0} aria-valuemax={100} aria-label={label}>
-      <div className={`h-full rounded-full ${over ? "bg-red-500" : "bg-emerald-500"}`} style={{ width: `${w}%` }} />
+      <div className={`h-full rounded-full ${over ? "bg-red-500" : "bg-emerald-500"}`} style={{ width: `${w}%`, transition: "width .8s cubic-bezier(.2,.8,.2,1)" }} />
     </div>
   );
 }

@@ -7,14 +7,15 @@ import { getToken } from "@/lib/api";
 const TABS = [
   { href: "/", label: "Inicio", d: "M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z" },
   { href: "/movimientos", label: "Movimientos", d: "M4 6h16M4 12h16M4 18h10" },
-  { href: "/cuentas", label: "Cuentas", d: "M3 7h18v12H3zM3 7l3-3h12l3 3M16 13h2" },
+  { href: "/calendario", label: "Calendario", d: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4" },
+  { href: "/vida", label: "Vida", d: "M12 21s-7-4.5-9-9a5 5 0 019-3 5 5 0 019 3c-2 4.5-9 9-9 9z" },
   { href: "/mas", label: "Más", d: "M5 12h.01M12 12h.01M19 12h.01" },
 ];
 
 function isActive(path: string, href: string) {
   const p = path.replace(/\/+$/, "") || "/";
   if (href === "/") return p === "/";
-  if (href === "/mas") return ["/mas", "/deudas", "/presupuestos", "/flujo", "/exportar"].some((x) => p.startsWith(x));
+  if (href === "/mas") return ["/mas", "/cuentas", "/importar", "/deudas", "/presupuestos", "/flujo", "/exportar"].some((x) => p.startsWith(x));
   return p.startsWith(href);
 }
 
@@ -33,10 +34,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="mx-auto min-h-screen max-w-xl">
-      <main className="px-4 pb-40 pt-4">{children}</main>
+      <main key={path} className="pv-page px-4 pb-40 pt-4">{children}</main>
       {!onRegister && (
         <Link href="/registrar/" aria-label="Registrar movimiento"
-          className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-3xl font-light text-white shadow-lg hover:bg-emerald-700 sm:right-[calc(50%-18rem)]">
+          className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-3xl font-light text-white shadow-lg transition-transform hover:bg-emerald-700 active:scale-90 sm:right-[calc(50%-18rem)]">
           +
         </Link>
       )}
@@ -47,7 +48,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             return (
               <li key={t.href} className="flex-1">
                 <Link href={t.href === "/" ? "/" : `${t.href}/`} aria-current={active ? "page" : undefined}
-                  className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${active ? "text-emerald-700 dark:text-emerald-400" : "text-slate-500"}`}>
+                  className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-transform active:scale-95 ${active ? "text-emerald-700 dark:text-emerald-400" : "text-slate-500"}`}>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={t.d} /></svg>
                   {t.label}
                 </Link>

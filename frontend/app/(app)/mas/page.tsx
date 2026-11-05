@@ -5,6 +5,7 @@ import { Btn, Card, PageTitle } from "@/components/ui";
 import { clearToken } from "@/lib/api";
 
 const ITEMS = [
+  { href: "/cuentas/", t: "Cuentas", d: "Saldos, tarjetas y préstamos" },
   { href: "/deudas/", t: "Deudas y vencimientos", d: "Lo que debes y lo que viene" },
   { href: "/presupuestos/", t: "Presupuestos", d: "Gasto del mes por categoría" },
   { href: "/flujo/", t: "Flujo de efectivo", d: "Meses, proyección y categorías" },

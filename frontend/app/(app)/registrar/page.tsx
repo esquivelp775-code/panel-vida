@@ -91,6 +91,7 @@ export default function Registrar() {
 
   // Corregir: ?fix=<id> abre el formulario precargado desde los asientos.
   const [fixId, setFixId] = useState<number | null>(null);
+  useEffect(() => { const dq = new URLSearchParams(window.location.search).get("date"); if (dq && /^\d{4}-\d{2}-\d{2}$/.test(dq)) setDate(dq); }, []);
   useEffect(() => { const v = Number(new URLSearchParams(window.location.search).get("fix")); if (v > 0) setFixId(v); }, []);
   const fixTx = useLoad(() => (fixId ? api.transaction(fixId) : Promise.resolve(null)), [fixId]);
   const [fixErr, setFixErr] = useState<string | null>(null);

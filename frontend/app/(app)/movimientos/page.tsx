@@ -6,11 +6,12 @@ import { useLoad } from "@/lib/useLoad";
 import { Btn, Card, Empty, ErrorBox, Field, Input, KIND_LABEL, Loading, Money, PageTitle, Select } from "@/components/ui";
 
 const PAGE = 20;
+const qp = (k: string) => new URLSearchParams(window.location.search).get(k) || "";
 const KINDS = ["income", "expense", "card_purchase", "transfer", "card_payment", "loan_payment", "loan_disbursement", "adjustment", "refund"];
 
 export default function Movimientos() {
   // AppShell sólo renderiza tras montar, así que leer la URL aquí no rompe la hidratación.
-  const [f, setF] = useState(() => ({ account_id: new URLSearchParams(window.location.search).get("account") || "", kind: "", date_from: "", date_to: "", q: "" }));
+  const [f, setF] = useState(() => ({ account_id: qp("account_id") || qp("account"), kind: "", date_from: qp("date_from"), date_to: qp("date_to"), q: "" }));
   const [applied, setApplied] = useState(f);
   const [offset, setOffset] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
