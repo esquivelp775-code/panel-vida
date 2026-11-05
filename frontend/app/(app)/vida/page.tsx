@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Board from "@/components/Board";
 import { api, fmtDate, todayISO, type Area, type Habit, type Priority, type Task } from "@/lib/api";
 import { addDays } from "@/lib/calendar";
@@ -10,13 +11,19 @@ import { CheckBox, Ring, Sheet, Skeleton } from "@/components/anim";
 
 type Tab = "tasks" | "habits" | "ryventis";
 
-export default function Vida() {
+export default function Page() {
+  return <Suspense fallback={null}><Vida /></Suspense>;
+}
+
+function Vida() {
   const [tab, setTab] = useState<Tab>("tasks");
+  // Reacciona a ?tab= también al navegar desde el menú lateral (antes sólo se leía al montar).
+  const q = useSearchParams().get("tab");
   useEffect(() => {
-    const t = new URLSearchParams(window.location.search).get("tab");
-    if (t === "ryventis" || t === "habits") setTab(t);
-    else if (t === "habitos") setTab("habits");
-  }, []);
+    if (q === "ryventis" || q === "habits") setTab(q);
+    else if (q === "habitos") setTab("habits");
+    else setTab("tasks");
+  }, [q]);
   return (
     <>
       <h1 className="t-h1 mb-4"><span className="serif">Vida</span> diaria</h1>

@@ -20,10 +20,11 @@ export const NAV_GROUPS: NavGroup[] = [
   { id: "vida", label: "Vida", open: false, items: [
     { href: "/vida/", label: "Pendientes", d: "M5 12l4 4 10-10" },
     { href: "/vida/?tab=habitos", label: "Hábitos", d: "M12 21s-7-4.5-9-9a5 5 0 019-3 5 5 0 019 3c-2 4.5-9 9-9 9z" },
-    { href: "/vida/?tab=ryventis", label: "Ryventis", d: "M4 5h6v14H4zM14 5h6v8h-6z" },
+  ] },
+  { id: "ryventis", label: "Ryventis", open: true, items: [
+    { href: "/vida/?tab=ryventis", label: "Tablero de proyectos", d: "M4 5h6v14H4zM14 5h6v8h-6z" },
   ] },
   { id: "otros", label: "Otros", open: false, items: [
-    { href: "/mas/", label: "Más", d: "M5 12h.01M12 12h.01M19 12h.01" },
     { href: "#logout", label: "Cerrar sesión", d: "M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10", action: "logout" },
   ] },
 ];

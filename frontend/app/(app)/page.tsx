@@ -16,6 +16,16 @@ function Seg({ kicker, children, className = "" }: { kicker: string; children: R
   );
 }
 
+const FRASES = [
+  "La disciplina de hoy es la libertad de mañana.",
+  "Paga primero la deuda más cara; cada peso cuenta.",
+  "Pequeños pasos todos los días hacen grandes cambios.",
+  "Lo que se mide, mejora.",
+  "Hoy es buen día para avanzar un poco.",
+  "Tu yo de junio te lo va a agradecer.",
+  "Constancia antes que intensidad.",
+];
+
 export default function Inicio() {
   const toast = useToast();
   const today = todayISO();
@@ -86,6 +96,14 @@ export default function Inicio() {
       </header>
       <ErrorBox message={dash.error} onRetry={dash.reload} />
 
+      <Seg kicker="Recordatorios">
+        <p className="serif text-2xl leading-snug">“{FRASES[new Date().getDate() % FRASES.length]}”</p>
+        <ul className="mt-3 flex flex-wrap gap-2 text-sm">
+          {["💧 Toma agua", "🧘 Respira 1 minuto", "🚶 Muévete 5 minutos", "📵 Descanso de pantalla"].map((r) => (
+            <li key={r} className="rounded-full bg-surface px-3 py-1.5 ring-1 ring-line">{r}</li>
+          ))}
+        </ul>
+      </Seg>
       <Seg kicker="Hoy">
         {tasksL.loading && !tasksL.data ? <Skeleton className="h-16" /> : (
           <>
