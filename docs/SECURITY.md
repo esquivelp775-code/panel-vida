@@ -12,7 +12,7 @@
 | Errores de integridad sin SQL expuesto | `main.py` | – |
 | Producción exige `PANEL_SECRET_KEY` ≥32 caracteres y CORS sin `*`; desactiva `/docs` | `config.py` | verificado manualmente |
 | Cabeceras `nosniff`, `no-store`, `no-referrer` en la API; `X-Frame-Options DENY` en el frontend | `main.py`, `netlify.toml`, nginx | – |
-| Contenedor de la API sin root | `backend/Dockerfile` | no construido (sin Docker en la sesión) |
+| Contenedor de la API sin root, con HEALTHCHECK | `backend/Dockerfile` | construido y ejecutado en CI (`stack`) |
 | Sin secretos en el repositorio (`.env` ignorado, `.env.example` con marcadores) | `.gitignore` | – |
 | Exportación JSON sin `password_hash` | `export_full` | `test_exports` |
 
@@ -25,7 +25,7 @@
 Sin acceso cruzado entre usuarios (sondeo con dos usuarios sobre todos los endpoints). Hallazgos
 corregidos: S1 campo `direction` del frontend rechazado (422), S2 500 al liquidar con interés sin
 categoría, S3 secreto por defecto no fail-closed, S4 bloqueo del dueño por rate-limit, S5 JWT sin `exp`,
-S7 `offset` enorme → 500. Pendientes: S6 TLS (requiere infraestructura), S8 HEALTHCHECK/hashes de pip.
+S7 `offset` enorme → 500. S8 HEALTHCHECK añadido. Pendientes: S6 TLS (requiere infraestructura), hashes de pip.
 
 ## Riesgos conocidos / pendientes
 1. **Token en `localStorage`**: vulnerable a XSS. Mitigado parcialmente con CSP (`script-src` requiere

@@ -8,7 +8,7 @@ Sistema financiero personal, mobile-first. Un usuario. Prioridad: **integridad f
 
 ## Qué hace (MVP)
 Dinero disponible, ingresos, gastos, transferencias, cuentas, tarjetas (corte, fecha de pago, crédito
-disponible), préstamos (capital/interés), deudas, próximos vencimientos, presupuestos, flujo de efectivo
+disponible), préstamos (capital/interés), meses sin intereses, deudas, próximos vencimientos, presupuestos, flujo de efectivo
 (devengado y liquidez), proyección, conciliación, anulación trazable y exportación CSV/JSON.
 
 ## Inicio rápido (desarrollo)
@@ -21,7 +21,7 @@ alembic upgrade head
 python -m app.cli create-user --email demo@example.com
 python -m app.cli seed-demo --email demo@example.com   # datos ficticios
 uvicorn app.main:app --reload # http://localhost:8000/docs
-python -m pytest -q           # 59 pruebas contra PostgreSQL
+python -m pytest -q           # 67 pruebas contra PostgreSQL
 
 cd ../frontend
 npm install
