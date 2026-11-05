@@ -81,6 +81,18 @@ Listo: ya puedes registrar movimientos reales.
    Negativo = salida de dinero, positivo = entrada (en tarjetas es al revés: los cargos son positivos;
    la app ya lo sabe). Fechas día/mes/año y punto decimal.
 
+## ¿Cómo cargo mis estados de cuenta y finanzas con ayuda de Claude?
+1. En una sesión de Claude, adjunta tus estados de cuenta (PDF, Excel o CSV del banco) y pide:
+   *"Conviértelos al CSV de importación de Panel de Vida (Fecha,Concepto,Monto)"*.
+   Antes de compartirlos puedes tachar números de cuenta/tarjeta: no hacen falta.
+2. Claude te devuelve un archivo CSV por cuenta (débito, tarjeta…). **Nunca se guarda en GitHub**:
+   tus datos reales sólo viven en la app.
+3. En la app: *Más → Importar estado de cuenta*, eliges la cuenta y el archivo, revisas la vista previa
+   (duplicados y mensualidades MSI marcados), clasificas en bloque y confirmas.
+4. Para gastos sueltos del día a día (o los de Obsidian), lo mismo con un CSV, o directo con el botón **+**.
+
+Claude no se conecta a tu base de datos ni necesita tus contraseñas: tú siempre confirmas lo que entra.
+
 ## Tu seguro mientras tanto (1 minuto a la semana)
 *Más → Exportar → Respaldo completo (JSON)*. Guarda el archivo en tu nube o computadora.
 Es una copia de todo, independiente de Neon y de Render.
@@ -115,3 +127,9 @@ Nada se borra de Neon hasta que tú lo decidas.
   respaldo semanal. Para la mudanza, el original sigue en Neon hasta que confirmes.
 - **¿Cuánta RAM necesita el servidor?** La app usa menos de 1 GB. Con 8 GB va bien; 16 GB sobra.
   Lo importante del disco viejo es guardar los respaldos **fuera** de ese disco (USB o nube).
+
+## ¿Y si se acaba la sesión o el crédito de Claude?
+No se pierde nada: el código está en GitHub, la app sigue en línea y tus datos en Neon.
+Para continuar: en **claude.ai/code** abre una sesión con el repositorio `panel-vida` y escribe
+*"lee CLAUDE.md y docs/PROGRESS.md y continúa"*. Para tener el código en tu computadora:
+`git clone https://github.com/esquivelp775-code/panel-vida` y `git checkout claude/panel-vida-autonomous-mission-zb4856`.
