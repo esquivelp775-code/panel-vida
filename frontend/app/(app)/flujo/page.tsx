@@ -27,7 +27,7 @@ export default function Flujo() {
           <ul className="space-y-4">
             {months.map((m) => (
               <li key={m.month}>
-                <p className="mb-1 text-sm font-semibold capitalize">{fmtMonth(m.month)}</p>
+                <p className="mb-1 text-sm font-semibold">{fmtMonth(m.month)}</p>
                 <div className="space-y-1" aria-hidden="true">
                   <div className="h-2.5 rounded-full bg-ink" style={{ width: `${Math.max(1, pctOf(m.income_cents, maxM))}%` }} />
                   <div className="h-2.5 rounded-full bg-expense" style={{ width: `${Math.max(1, pctOf(m.expense_cents, maxM))}%` }} />

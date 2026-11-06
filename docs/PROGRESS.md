@@ -17,6 +17,21 @@ Docker). Fase 8: despliegue preparado y probado en CI, **no desplegado** en un s
 * Nuevo: `/configuracion/` (perfil, contraseña, cerrar otras sesiones, recordatorios, verificar el libro). Migración 0010.
 * Pendiente de decidir: `connect-src https:` del CSP en `netlify.toml` sigue sin fijar el dominio real de la API.
 
+## Diseño móvil y transiciones (2026-11-05)
+* QA con subagentes (capturas 360/390/430 px, flujos completos, revisión de código). Corregido: barra inferior
+  translúcida y botón "+" encimados sobre el contenido (ahora barra opaca con banda que desvanece), pestañas
+  cortadas sin pista (píldora deslizante, autodesplazamiento y bordes que se desvanecen), regla `button { font:
+  inherit }` fuera de `@layer base` que anulaba tamaños y pesos de Tailwind en todos los botones, listas de tarjetas
+  sueltas (Cuentas y Deudas pasan a listas agrupadas; acciones de obligaciones en una hoja), montos que se enciman
+  (Inicio, Finanzas, Ryventis), texto < 12 px y objetivos táctiles < 44 px, contraste de etiquetas "Vencido".
+* Movimiento: entrada direccional según la pestaña (`lib/motion.ts`), una sola entrada por pantalla (sin cascada),
+  salida animada de hojas y diálogos, desenfoque sólo en piezas flotantes (rendimiento con el fondo animado).
+
+## Pendiente: resumen diario (decidido por el propietario dejarlo para después)
+* Opción elegida a evaluar: rutina programada de Claude que lea `GET /api/v1/resumen` (por crear: sólo lectura, llave
+  propia, sin escritura) y envíe el resumen al Gmail del propietario. Alternativa sin costo: GitHub Actions + Gmail
+  (contraseña de aplicación). Render gratuito bloquea SMTP saliente desde sept. 2025.
+
 ## Pedidos del propietario para la siguiente sesión (2026-11-05)
 1. **Ryventis completo** (grupo propio en el menú ya creado): clientes/CRM (etapas, seguimientos),
    proyectos en curso con monto y entregas, y **cuentas por cobrar** — muy desglosado (referencias:

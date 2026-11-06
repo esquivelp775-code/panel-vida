@@ -15,6 +15,7 @@ export default function Movimientos() {
   const [applied, setApplied] = useState(f);
   const [offset, setOffset] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
+  const [rangeErr, setRangeErr] = useState<string | null>(null);
   const accounts = useLoad(() => api.accounts(), []);
   const tx = useLoad(() => api.transactions({ ...applied, include_voided: true, limit: PAGE, offset }), [applied, offset]);
   const accs: Account[] = (accounts.data || []).filter((a) => !a.is_system && (a.account_class === "asset" || a.account_class === "liability"));
@@ -26,7 +27,8 @@ export default function Movimientos() {
       <PageTitle right={<Btn variant="ghost" onClick={() => setShowFilters((s) => !s)}>Filtros{activeFilters ? ` (${activeFilters})` : ""}</Btn>}>Movimientos</PageTitle>
       {showFilters && (
         <Card className="mb-3">
-          <form onSubmit={(e) => { e.preventDefault(); setOffset(0); setApplied(f); }}>
+          <form onSubmit={(e) => { e.preventDefault(); if (f.date_from && f.date_to && f.date_from > f.date_to) { setRangeErr("La fecha «Desde» es posterior a «Hasta»."); return; } setRangeErr(null); setOffset(0); setApplied(f); }}>
+            <ErrorBox message={rangeErr} />
             <Field label="Búsqueda"><Input value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} placeholder="Descripción" /></Field>
             <div className="grid grid-cols-2 gap-2">
               <Field label="Cuenta">
@@ -67,8 +69,8 @@ export default function Movimientos() {
                         <p className={`truncate font-medium ${t.voided_at ? "line-through" : ""}`}>{t.description || KIND_LABEL[t.kind] || t.kind}</p>
                         <p className="text-xs text-muted">{fmtDate(t.occurred_on)} · {KIND_LABEL[t.kind] || t.kind}{t.voided_at ? " · ANULADA" : ""}{t.reverses_id ? " · reversión" : ""}</p>
                       </div>
-                      <p className={`shrink-0 font-semibold ${t.kind === "income" ? "text-income" : ""}`}>
-                        {t.kind === "income" ? "+" : out ? "−" : ""}<Money cents={t.amount_cents} />
+                      <p className={`shrink-0 font-semibold ${t.kind === "income" || t.kind === "refund" ? "text-income" : ""}`}>
+                        {t.kind === "income" || t.kind === "refund" ? "+" : out ? "−" : ""}<Money cents={t.amount_cents} />
                       </p>
                     </div>
                   </Card>

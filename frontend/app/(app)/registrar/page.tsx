@@ -215,7 +215,7 @@ export default function Registrar() {
 
   return (
     <>
-      <PageTitle right={<Link href="/" className="text-sm font-semibold text-income">Cerrar</Link>}>Registrar</PageTitle>
+      <PageTitle right={<Link href="/" className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-income">Cerrar</Link>}>Registrar</PageTitle>
       {fixId ? (
         <Card className="mb-3">
           <p className="font-semibold">Corregir operación #{fixId}</p>
@@ -231,7 +231,7 @@ export default function Registrar() {
           <Btn variant="danger" className="mt-2 w-full" onClick={retryVoid} disabled={voiding}>{voiding ? "Anulando…" : "Reintentar anulación"}</Btn>
         </div>
       )}
-      {fixDone ? null : needs.length > 0 ? (
+      {fixDone || fixErr ? null : needs.length > 0 ? (
         <Empty title={`Primero crea ${needs.join(" y ")}`} hint="Se hace una sola vez en Cuentas." action={<Link href="/cuentas/" className="font-semibold text-ink underline">Ir a Cuentas</Link>} />
       ) : (
         <form onSubmit={submit} noValidate>

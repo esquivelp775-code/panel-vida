@@ -41,7 +41,7 @@ export default function Presupuestos() {
       <PageTitle>Presupuestos</PageTitle>
       <div className="mb-3 flex items-center justify-between">
         <Btn variant="secondary" aria-label="Mes anterior" onClick={() => setMonth(shiftMonth(month, -1))}>‹</Btn>
-        <p className="font-semibold capitalize">{fmtMonth(month)}</p>
+        <p className="font-semibold">{fmtMonth(month)}</p>
         <Btn variant="secondary" aria-label="Mes siguiente" onClick={() => setMonth(shiftMonth(month, 1))}>›</Btn>
       </div>
       <ErrorBox message={budgets.error} onRetry={budgets.reload} />

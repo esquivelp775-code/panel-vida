@@ -32,7 +32,7 @@ export default function Board() {
     await run(() => api.createTask({ title: title.trim(), area: "ryventis", project_id: projectId ? Number(projectId) : null }));
     setTitle("");
   }
-  const act = "pv-press min-h-9 rounded-full bg-soft px-3 text-xs font-semibold ring-1 ring-line disabled:opacity-50";
+  const act = "pv-press min-h-11 rounded-full bg-soft px-3 text-xs font-semibold ring-1 ring-line disabled:opacity-50";
 
   return (
     <>
@@ -69,7 +69,7 @@ export default function Board() {
                 {c.st === "pending" && (
                   <form onSubmit={add} className="mt-2">
                     <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="+ Nueva tarea…" maxLength={200} aria-label="Nueva tarea de Ryventis" />
-                    <Select value={projectId} onChange={(e) => setProjectId(e.target.value)} className="mt-2 !min-h-9 !py-1 !text-xs" aria-label="Proyecto (opcional)">
+                    <Select value={projectId} onChange={(e) => setProjectId(e.target.value)} className="mt-2 !min-h-11 !py-1 !text-xs" aria-label="Proyecto (opcional)">
                       <option value="">Sin proyecto</option>
                       {(projs.data || []).filter((p) => p.status !== "cancelado").map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </Select>

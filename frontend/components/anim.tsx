@@ -2,6 +2,7 @@
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { formatCents } from "@/lib/money";
+import { usePresence } from "@/components/motion";
 
 export function reducedMotion(): boolean {
   return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -96,24 +97,28 @@ export function Donut({ slices, size = 140, onPick }: { slices: { id: number; la
   );
 }
 
-/** Hoja inferior animada. */
+/** Hoja inferior animada (entra y sale por abajo). */
 export function Sheet({ open, title, onClose, children }: { open: boolean; title: string; onClose: () => void; children: ReactNode }) {
+  const { mounted, closing } = usePresence(open);
+  const last = useRef(children);
+  if (open) last.current = children;
   useEffect(() => {
     if (!open) return;
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   }, [open, onClose]);
-  if (!open || typeof document === "undefined") return null;
+  if (!mounted || typeof document === "undefined") return null;
+  const close = closing ? undefined : onClose;
   // Portal a <body>: el contenedor animado de la página crea su propio contexto de apilamiento y,
   // sin portal, la barra de navegación flotante tapaba los botones del diálogo.
   return createPortal(
-    <div className="pv-backdrop fixed inset-0 z-[70] flex items-end justify-center bg-black/50 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={title} onClick={onClose}>
-      <div className="pv-sheet max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-t-[28px] bg-surface glass-solid p-5 pb-8 ring-1 ring-line" onClick={(e) => e.stopPropagation()}>
+    <div data-closing={closing || undefined} className="pv-backdrop fixed inset-0 z-[70] flex items-end justify-center bg-black/50 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={title} onClick={close}>
+      <div data-closing={closing || undefined} className="pv-sheet glass max-h-[85dvh] w-full max-w-xl overflow-y-auto rounded-t-[28px] glass-solid p-5 pb-[max(2rem,env(safe-area-inset-bottom))] ring-1 ring-line" onClick={(e) => e.stopPropagation()}>
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-ink/20" />
-        <div className="mb-3 flex items-center justify-between"><h3 className="text-lg font-bold capitalize">{title}</h3>
-          <button onClick={onClose} aria-label="Cerrar" className="min-h-11 min-w-11 text-xl text-muted">✕</button></div>
-        {children}
+        <div className="mb-3 flex items-center justify-between gap-2"><h3 className="min-w-0 text-lg font-bold first-letter:uppercase">{title}</h3>
+          <button onClick={close} aria-label="Cerrar" className="min-h-11 min-w-11 shrink-0 text-xl text-muted">✕</button></div>
+        {open ? children : last.current}
       </div>
     </div>,
     document.body,

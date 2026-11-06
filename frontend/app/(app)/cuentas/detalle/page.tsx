@@ -35,6 +35,7 @@ function EditForm({ a, onDone }: { a: Account; onDone: () => void }) {
       const d = dayOk(due); if (d === null) return setError("Día de pago: número de 1 a 31.");
       body.credit_limit_cents = l; body.statement_day = s; body.due_day = d;
     }
+    if ((a.subtype === "loan" || isCard) && rate.trim() === "" && a.interest_rate_bps != null) body.interest_rate_bps = null;
     if ((a.subtype === "loan" || isCard) && rate.trim() !== "") {
       const r = parseToCents(rate); // "12.5" % -> 1250 puntos base, sin floats
       if (r === null) return setError("Tasa inválida.");
@@ -116,7 +117,7 @@ function Detail() {
         {a.subtype === "credit_card" && (
           <Muted className="mt-1">Límite {a.credit_limit_cents != null ? formatCents(a.credit_limit_cents) : "—"} · corte día {a.statement_day ?? "—"} · pago día {a.due_day ?? "—"}</Muted>
         )}
-        <div className="mt-2 flex items-center gap-4">
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
           <Link href={`/movimientos/?account=${a.id}`} className="text-sm font-semibold text-ink underline">Ver movimientos</Link>
           {reconcilable && !a.archived_at && <Link href={`/importar/?account=${a.id}`} className="text-sm font-semibold text-ink underline">Importar estado</Link>}
           {!a.archived_at && !a.is_system && <button type="button" onClick={() => setEditOpen(true)} className="min-h-11 text-sm font-semibold text-ink underline">Editar</button>}

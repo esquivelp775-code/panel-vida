@@ -92,9 +92,9 @@ export default function Inicio() {
   const pill = "pv-press inline-flex min-h-11 items-center rounded-full bg-surface px-4 text-sm font-semibold ring-1 ring-line";
 
   return (
-    <div className="stagger space-y-4">
+    <div className="space-y-4">
       <header>
-        <p className="text-sm capitalize text-muted">{dateStr}</p>
+        <p className="text-sm text-muted first-letter:uppercase">{dateStr}</p>
         <h1 className="t-h1">{greeting(now.getHours())}{firstName && <>, <span className="serif capitalize">{firstName}</span></>}</h1>
         <div className="mt-3 flex flex-wrap gap-2">
           <button className={pill} onClick={() => { setText(""); setSheet("task"); }}>+ Pendiente</button>
@@ -151,14 +151,17 @@ export default function Inicio() {
           <div className="space-y-3">
             {byDay.map(([day, g]) => (
               <div key={day}>
-                <p className="mb-1 text-xs font-semibold capitalize text-muted">{fmtDate(day)}</p>
+                <p className="mb-1 text-xs font-semibold text-muted">{fmtDate(day)}</p>
                 <ul className="space-y-1">
-                  {g.tasks.map((t) => <li key={`t${t.id}`} className="flex min-h-9 items-center gap-2 text-sm"><span className="h-2 w-2 rounded-full bg-accent" /><span className="min-w-0 flex-1 truncate">{t.title}</span></li>)}
+                  {g.tasks.map((t) => <li key={`t${t.id}`} className="flex min-h-11 items-center gap-2 text-sm"><span className="h-2 w-2 rounded-full bg-accent" /><span className="line-clamp-2 min-w-0 flex-1 leading-snug">{t.title}</span></li>)}
                   {g.money.map((u, i) => (
-                    <li key={`${u.source}-${u.ref_id}-${i}`} className="flex min-h-9 items-center gap-2 text-sm">
-                      <span className="h-2 w-2 rounded-full" style={{ background: u.direction === "inflow" ? "var(--income)" : "#FF9E7A" }} />
-                      <span className="min-w-0 flex-1 truncate">{u.overdue ? "Vencido · " : ""}{u.name}</span>
-                      <span className={`num text-sm ${u.direction === "inflow" ? "text-income" : "text-expense"}`}>{u.direction === "inflow" ? "+" : "−"}<Money cents={u.amount_cents} /></span>
+                    <li key={`${u.source}-${u.ref_id}-${i}`} className="flex min-h-11 items-center gap-2 py-1 text-sm">
+                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: u.direction === "inflow" ? "var(--income)" : "#FF9E7A" }} />
+                      <span className="min-w-0 flex-1 leading-snug">
+                        {u.overdue && <span className="mr-1.5 rounded-full bg-expense/15 px-1.5 py-0.5 text-xs font-semibold text-expense">Vencido</span>}
+                        <span className="line-clamp-2">{u.name}</span>
+                      </span>
+                      <span className={`num shrink-0 text-sm ${u.direction === "inflow" ? "text-income" : "text-expense"}`}>{u.direction === "inflow" ? "+" : "−"}<Money cents={u.amount_cents} /></span>
                     </li>
                   ))}
                 </ul>
@@ -169,10 +172,12 @@ export default function Inicio() {
       </Seg>
 
       <Seg kicker="Ryventis">
-        <div className="mb-3 flex gap-6">
-          <div><p className="num text-3xl">{ryvS.data ? <Money cents={ryvS.data.receivable_cents} /> : "—"}</p><p className="text-xs text-muted">Por cobrar</p></div>
-          <div><p className="num text-3xl">{ryvPending}</p><p className="text-xs text-muted">Pendientes</p></div>
-          <div><p className="num text-3xl">{ryvS.data ? ryvS.data.projects.en_marcha : ryvDoing.length}</p><p className="text-xs text-muted">En marcha</p></div>
+        <div className="mb-3">
+          <p className="num text-3xl">{ryvS.data ? <Money cents={ryvS.data.receivable_cents} /> : "—"}</p><p className="text-xs text-muted">Por cobrar</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="rounded-[20px] bg-soft p-3"><p className="num text-xl">{ryvPending}</p><p className="text-xs text-muted">Pendientes</p></div>
+            <div className="rounded-[20px] bg-soft p-3"><p className="num text-xl">{ryvS.data ? ryvS.data.projects.en_marcha : ryvDoing.length}</p><p className="text-xs text-muted">En marcha</p></div>
+          </div>
         </div>
         <Link href="/ryventis/" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold underline">Ver tablero →</Link>
       </Seg>

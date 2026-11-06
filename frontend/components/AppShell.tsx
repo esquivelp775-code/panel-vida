@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { clearToken, getToken } from "@/lib/api";
 import { NAV_GROUPS, groupHasPath, isNavItemActive, type NavItem } from "@/components/nav";
+import { useIndicator, useRouteDirection } from "@/components/motion";
 
 const TABS = [
   { href: "/", label: "Inicio", d: "M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z" },
@@ -41,6 +42,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const [ready, setReady] = useState(false);
   const [openG, setOpenG] = useState<Record<string, boolean>>({});
+  const dir = useRouteDirection(path);
+  const tabsRef = useRef<HTMLUListElement>(null);
+  // -1 hasta que la barra existe (antes de `ready` no se pinta): así se vuelve a medir al aparecer.
+  const tabIndicator = useIndicator(tabsRef, ready ? TABS.findIndex((t) => isActive(path, t.href)) : -1, TABS.length);
   useEffect(() => {
     try { setOpenG(JSON.parse(localStorage.getItem("pv_nav_groups") || "{}")); } catch { /* ignore */ }
   }, []);
@@ -69,6 +74,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   }, [router]);
 
   if (!ready) return <p className="p-8 text-center text-sm text-muted">Cargando…</p>;
+
   const onRegister = path.startsWith("/registrar");
   const left = TABS.slice(0, 2), right = TABS.slice(2);
 
@@ -76,11 +82,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
     const active = isActive(path, t.href);
     return (
       <li key={t.href} className="flex-1">
-        <Link href={to(t.href)} aria-label={t.label} aria-current={active ? "page" : undefined}
-          className={`pv-press relative flex min-h-14 flex-col items-center justify-center gap-1 transition-colors ${active ? "text-ink" : "text-muted"}`}>
+        <Link href={to(t.href)} aria-label={t.label} aria-current={active ? "page" : undefined} data-ind-item
+          className={`pv-press relative z-[1] flex min-h-14 flex-col items-center justify-center gap-0.5 transition-colors duration-200 ${active ? "text-ink" : "text-muted"}`}>
           <Icon d={t.d} />
-          <span className="sr-only">{t.label}</span>
-          <span aria-hidden="true" className={`h-1 w-1 rounded-full bg-accent transition-opacity duration-200 ${active ? "opacity-100" : "opacity-0"}`} />
+          <span className="text-[11px] font-semibold leading-none">{t.label}</span>
         </Link>
       </li>
     );
@@ -124,17 +129,20 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="mx-auto w-full max-w-xl lg:max-w-5xl lg:flex-1">
-        <main key={path} className="pv-page px-4 pb-40 pt-5 lg:px-8 lg:pb-12 lg:pt-8">{children}</main>
+        <main key={path} data-dir={dir} className="pv-page px-4 pb-36 pt-[max(1.25rem,env(safe-area-inset-top))] lg:px-8 lg:pb-12 lg:pt-8">{children}</main>
       </div>
 
       {/* Barra inferior (móvil) */}
+      {/* Barra inferior: opaca sobre una banda que desvanece el contenido, para que nada se vea "a través" ni choque. */}
       <nav aria-label="Navegación principal" className="fixed inset-x-0 bottom-0 z-20 px-3 pb-[max(.75rem,env(safe-area-inset-bottom))] lg:hidden">
-        <ul className="mx-auto flex max-w-md items-center rounded-[28px] bg-surface px-2 ring-1 ring-line">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-32 bg-gradient-to-t from-[var(--base)] from-40% to-transparent" />
+        <ul ref={tabsRef} className="glass glass-solid relative mx-auto flex max-w-md items-center rounded-[28px] px-1.5 py-1.5 ring-1 ring-line">
+          <span aria-hidden="true" className="pv-indicator absolute bottom-1.5 left-0 top-1.5 rounded-[22px] bg-soft ring-1 ring-line" style={tabIndicator} />
           {left.map(tab)}
           <li className="flex w-16 justify-center">
             {!onRegister && (
               <Link href="/registrar/" aria-label="Registrar movimiento"
-                className="pv-press -mt-7 flex h-14 w-14 items-center justify-center rounded-full btn-accent text-3xl font-light leading-none ring-4 ring-white/10">
+                className="pv-press flex h-12 w-12 items-center justify-center rounded-full btn-accent text-3xl font-light leading-none">
                 +
               </Link>
             )}

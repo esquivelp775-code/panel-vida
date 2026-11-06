@@ -13,19 +13,23 @@
   --b1: #2A2A2E; --b2: #4A4A50; --b3: #1C1C20; --b4: #8A8A92; --blob-o: .35;
   --spot: rgba(255,255,255,.10);
   --ease: cubic-bezier(.22,1,.36,1);
+  --ease-drawer: cubic-bezier(.32,.72,0,1); /* curva tipo iOS para hojas */
+  --on-expense: #060607;
+  --card-shadow: 0 1px 2px rgba(0,0,0,.25);
   /* Escala tipográfica */
-  --fs-h1: clamp(2.5rem, 7vw, 3.5rem); --fs-h2: 1.5rem; --fs-kicker: 11px; --fs-body: 15px; --fs-small: 13px;
+  --fs-h1: clamp(2.125rem, 7vw, 3.5rem); --fs-h2: 1.5rem; --fs-kicker: 12px; --fs-body: 15px; --fs-small: 13px;
 }
 @media (prefers-color-scheme: light) {
   :root {
     color-scheme: light;
-    --base: #E9E9EC; --surface: rgba(255,255,255,.55); --ink: #111113; --on-ink: #FFFFFF; --muted: #5C5C66;
+    --base: #E9E9EC; --surface: rgba(255,255,255,.62); --ink: #111113; --on-ink: #FFFFFF; --muted: #5C5C66;
     --line: rgba(0,0,0,.08); --soft: rgba(0,0,0,.05); --inverse: rgba(255,255,255,.6); --on-inverse: #111113;
     --income: #15803D; --expense: #B91C1C; --warning: #B45309; --accent: #111113; --on-accent: #FFFFFF;
     --hi-top: rgba(255,255,255,.9); --hi-bot: rgba(255,255,255,.3);
     --shadow: 0 10px 40px rgba(0,0,0,.10); --glass-solid: rgba(250,250,251,.92);
     --b1: #FFFFFF; --b2: #C9C9CF; --b3: #D8D8DD; --b4: #A9A9B2; --blob-o: .6;
     --spot: rgba(255,255,255,.7);
+    --on-expense: #FFFFFF; --card-shadow: 0 1px 2px rgba(0,0,0,.06);
   }
 }
 @theme inline {
@@ -42,8 +46,11 @@
 }
 html, body { background: var(--base); color: var(--ink); font-family: var(--font-sans); font-size: var(--fs-body); line-height: 1.5; min-height: 100%; }
 body { -webkit-tap-highlight-color: transparent; padding-bottom: env(safe-area-inset-bottom); letter-spacing: -0.005em; }
-input, select, textarea, button { font: inherit; }
-h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0.03em; font-optical-sizing: auto; }
+/* En la capa base: fuera de ella le ganaban a las utilidades de Tailwind (botones sin text-sm ni font-semibold). */
+@layer base {
+  input, select, textarea, button { font: inherit; }
+  h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0.03em; font-optical-sizing: auto; }
+}
 .t-h1 { font-family: var(--font-display); font-size: var(--fs-h1); font-weight: 700; letter-spacing: -0.035em; line-height: 1.05; font-optical-sizing: auto; }
 .t-h2 { font-family: var(--font-display); font-size: var(--fs-h2); font-weight: 700; letter-spacing: -0.03em; line-height: 1.15; }
 .t-kicker { font-family: var(--font-sans); font-size: var(--fs-kicker); font-weight: 600; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); }
@@ -71,16 +78,18 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0
 @keyframes pv-b4 { to { transform: translate3d(-22vmax, -20vmax, 0) scale(1.1); } }
 
 /* ---------- Liquid glass ---------- */
-.glass, .bg-surface, .bg-inverse {
+/* El desenfoque de fondo es caro: con el fondo animado se recalcula en cada cuadro. Sólo lo llevan las piezas
+   flotantes (barra inferior, hojas, diálogos); las tarjetas usan un relieve ligero y el fondo ya es difuso. */
+.glass, .bg-inverse {
   -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
   box-shadow: inset 0 1px 0 var(--hi-top), inset 0 -1px 0 var(--hi-bot), var(--shadow);
 }
+.bg-surface { box-shadow: inset 0 1px 0 var(--hi-top), inset 0 -1px 0 var(--hi-bot), var(--card-shadow); }
 .glass-solid { background: var(--glass-solid) !important; }
 .btn-accent { background: var(--accent); color: var(--on-accent); box-shadow: 0 2px 14px rgba(255,255,255,.12); }
-.stagger > * { opacity: 0; animation: pv-fade .32s var(--ease) forwards; }
-.stagger > *:nth-child(1) { animation-delay: 0ms; } .stagger > *:nth-child(2) { animation-delay: 60ms; }
-.stagger > *:nth-child(3) { animation-delay: 120ms; } .stagger > *:nth-child(4) { animation-delay: 180ms; }
-.stagger > *:nth-child(5) { animation-delay: 240ms; } .stagger > *:nth-child(n+6) { animation-delay: 300ms; }
+/* Bordes que se desvanecen en tiras con scroll horizontal: sólo del lado en que hay más contenido. */
+.fade-l, .fade-r { --fl: 0px; --fr: 0px; -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); mask-image: linear-gradient(to right, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); }
+.fade-l { --fl: 20px; } .fade-r { --fr: 20px; }
 
 /* ---------- Animaciones (todas se desactivan con prefers-reduced-motion) ---------- */
 @keyframes pv-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -91,11 +100,24 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0
 @keyframes pv-draw { to { stroke-dashoffset: 0; } }
 @keyframes pv-slide-l { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
 @keyframes pv-slide-r { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+/* Cambio de pestaña o de pantalla: una sola entrada, corta, desde el lado hacia el que se movió el usuario. */
+@keyframes pv-enter-fwd { from { opacity: 0; transform: translate3d(14px, 0, 0); } to { opacity: 1; transform: none; } }
+@keyframes pv-enter-back { from { opacity: 0; transform: translate3d(-14px, 0, 0); } to { opacity: 1; transform: none; } }
+@keyframes pv-enter { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pv-slide-down { from { transform: none; } to { transform: translateY(100%); } }
+@keyframes pv-fade-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes pv-check { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
-.pv-page { animation: pv-fade .28s var(--ease) both; }
+.pv-page { animation: pv-enter .2s var(--ease) both; }
+.pv-page[data-dir="forward"] { animation-name: pv-enter-fwd; }
+.pv-page[data-dir="back"] { animation-name: pv-enter-back; }
 .pv-in { opacity: 0; animation: pv-fade .28s var(--ease) forwards; }
-.pv-sheet { animation: pv-slide-up .28s var(--ease) both; }
+.pv-sheet { animation: pv-slide-up .32s var(--ease-drawer) both; }
 .pv-backdrop { animation: pv-fade-bg .2s var(--ease) both; }
+/* Salida: misma ruta que la entrada, más corta. */
+.pv-sheet[data-closing] { animation: pv-slide-down .22s var(--ease-drawer) both; }
+.pv-backdrop[data-closing] { animation: pv-fade-out .22s var(--ease) both; pointer-events: none; }
+/* Indicador deslizante de pestañas (Segmented y barra inferior). */
+.pv-indicator { transition: transform .28s var(--ease), width .28s var(--ease), opacity .2s var(--ease); }
 .pv-skel { background: linear-gradient(90deg, rgba(148,163,184,.18) 0%, rgba(148,163,184,.38) 50%, rgba(148,163,184,.18) 100%); background-size: 200px 100%; background-repeat: no-repeat; background-color: rgba(148,163,184,.18); animation: pv-shimmer 1.2s infinite linear; }
 .pv-pop { animation: pv-pop .35s var(--ease); }
 .pv-draw { stroke-dasharray: var(--len, 300); stroke-dashoffset: var(--len, 300); animation: pv-draw .9s var(--ease) .1s forwards; }
@@ -107,8 +129,9 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0
 @media (prefers-reduced-motion: reduce) {
   .aurora i { animation: none !important; }
   .aurora .spot { display: none !important; }
-  .stagger > * { animation: none !important; opacity: 1 !important; }
-  .pv-page, .pv-in, .pv-sheet, .pv-backdrop, .pv-skel, .pv-pop, .pv-slide-l, .pv-slide-r, .pv-check path { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .pv-page { animation: pv-enter .15s linear both !important; transform: none !important; }
+  .pv-in, .pv-sheet, .pv-backdrop, .pv-skel, .pv-pop, .pv-slide-l, .pv-slide-r, .pv-check path { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .pv-sheet[data-closing], .pv-backdrop[data-closing] { animation: pv-fade-out .15s linear both !important; transform: none !important; }
   .pv-draw { animation: none !important; stroke-dashoffset: 0 !important; }
   .pv-press, .pv-press:active { transition: none; transform: none; }
   * { transition-duration: 0s !important; }

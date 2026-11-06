@@ -73,8 +73,9 @@ test("obligationTargets ofrece el destino correcto por tipo", () => {
 });
 
 test("settleAccounts permite pagar recibos con tarjeta pero no pagar una tarjeta con otra", () => {
-  assert.deepEqual(ids(settleAccounts("bill", accounts)), [1, 2, 3]);
-  assert.deepEqual(ids(settleAccounts("other", accounts)), [1, 2, 3]);
+  // Primero el dinero de uso diario y la tarjeta; la inversión (tandas aportadas, cuenta puente) al final.
+  assert.deepEqual(ids(settleAccounts("bill", accounts)), [1, 3, 2]);
+  assert.deepEqual(ids(settleAccounts("other", accounts)), [1, 3, 2]);
   assert.deepEqual(ids(settleAccounts("card_payment", accounts)), [1, 2]);
   assert.deepEqual(ids(settleAccounts("loan_installment", accounts)), [1, 2]);
   assert.deepEqual(ids(settleAccounts("savings", accounts)), [1, 2]);

@@ -48,7 +48,7 @@ export type TxCreate =
   | { kind: "card_payment"; occurred_on: string; description: string; notes?: string; from_account_id: number; card_account_id: number; amount_cents: number }
   | { kind: "loan_payment"; occurred_on: string; description: string; notes?: string; from_account_id: number; loan_account_id: number; principal_cents: number; interest_cents: number; interest_category_id?: number };
 export interface AccountUpdate {
-  name?: string; credit_limit_cents?: number; statement_day?: number; due_day?: number; interest_rate_bps?: number;
+  name?: string; credit_limit_cents?: number; statement_day?: number; due_day?: number; interest_rate_bps?: number | null;
 }
 export interface InstallmentPlan {
   plan_id: number; transaction_id: number; description: string; purchased_on: string; total_cents: number;
@@ -90,7 +90,7 @@ export interface DebtPlan { target_month: string; months_left: number; total_owe
 export type Priority = "low" | "normal" | "high";
 export type Area = "finanzas" | "personal" | "trabajo" | "casa" | "salud" | "ryventis" | "otro";
 export interface Task { id: number; title: string; notes: string | null; due_date: string | null; priority: Priority; area: Area; status: "pending" | "doing" | "done"; completed_at: string | null; created_at: string; project_id?: number | null }
-export interface TaskCreate { title: string; notes?: string; due_date?: string | null; priority?: Priority; area?: Area; project_id?: number | null }
+export interface TaskCreate { title: string; notes?: string | null; due_date?: string | null; priority?: Priority; area?: Area; project_id?: number | null }
 export interface Habit { id: number; name: string; emoji: string; target_per_week: number; streak_days: number; done_today: boolean; week_count: number; last_7: { date: string; done: boolean }[] }
 export interface CalEvent { kind: "obligation" | "card" | "task"; ref_id: number; title: string; amount_cents: number | null; direction: "outflow" | "inflow" | null; status: "pending" | "paid" | "done" | "overdue"; priority: Priority | null }
 export interface CalDay { date: string; income_cents: number; expense_cents: number; tx_count: number; habits_done: number; events: CalEvent[] }
@@ -303,5 +303,6 @@ export function fmtDate(iso: string): string {
 }
 export function fmtMonth(m: string): string {
   const [y, mo] = m.split("-").map(Number);
-  return new Intl.DateTimeFormat("es-MX", { month: "long", year: "numeric" }).format(new Date(y, mo - 1, 1));
+  const t = new Intl.DateTimeFormat("es-MX", { month: "long", year: "numeric" }).format(new Date(y, mo - 1, 1));
+  return t.charAt(0).toUpperCase() + t.slice(1); // "Junio de 2027" (con CSS capitalize salía "Junio De 2027")
 }

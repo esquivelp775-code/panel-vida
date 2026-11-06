@@ -307,3 +307,30 @@ def test_token_issued_before_this_feature_stays_valid(client):
     c = TestClient(app)
     c.headers["Authorization"] = f"Bearer {old}"
     assert c.get("/api/v1/auth/me").status_code == 200
+
+
+# ------------------------------------------------------------------ errores de validación en español
+def test_validation_errors_are_in_spanish_with_field_names(api):
+    body = {"dry_run": True, "transactions": [{"occurred_on": "2026-10-01", "description": "X", "amount_cents": -5,
+                                               "account": "A", "category": "B"}],
+            "tasks": [{"title": "T", "area": "inexistente"}]}
+    r = api.c.post("/api/v1/setup/bulk", json=body)
+    assert r.status_code == 422
+    detail = r.json()["detail"]
+    assert isinstance(detail, str)
+    assert "Input should" not in detail
+    assert "amount_cents" in detail and "mayor que 0" in detail
+    assert "area" in detail and "valor no permitido" in detail
+
+
+def test_validation_error_for_missing_and_extra_fields(api):
+    r = api.c.post("/api/v1/tasks", json={"titulo": "sin título"})
+    detail = r.json()["detail"]
+    assert r.status_code == 422 and "title: es obligatorio" in detail and "titulo: campo no permitido" in detail
+
+
+def test_custom_validator_message_keeps_its_spanish_text(api):
+    r = api.c.post("/api/v1/transactions", json={"kind": "adjustment", "account_id": 1, "delta_cents": 0,
+                                                 "occurred_on": "2026-10-01"})
+    assert r.status_code == 422 and "El ajuste no puede ser cero" in r.json()["detail"]
+    assert "Value error" not in r.json()["detail"]

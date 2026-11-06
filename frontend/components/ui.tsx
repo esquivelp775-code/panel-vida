@@ -1,7 +1,8 @@
 "use client";
 import { createPortal } from "react-dom";
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { formatCents } from "@/lib/money";
+import { useIndicator, usePresence } from "@/components/motion";
 
 /* ---------- Toasts ---------- */
 type Toast = { id: number; text: string; kind: "ok" | "err" };
@@ -18,7 +19,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastCtx.Provider value={push}>
       {children}
-      <div className="fixed left-0 right-0 top-3 z-50 flex flex-col items-center gap-2 px-4 pointer-events-none" role="status" aria-live="polite">
+      <div className="fixed left-0 right-0 top-[max(.75rem,env(safe-area-inset-top))] z-[80] flex flex-col items-center gap-2 px-4 pointer-events-none" role="status" aria-live="polite">
         {items.map((t) => (
           <div key={t.id} className={`rounded-full px-5 py-2.5 text-sm font-medium shadow-soft text-white ${t.kind === "ok" ? "bg-accent !text-onaccent" : "bg-expense"}`}>{t.text}</div>
         ))}
@@ -36,9 +37,9 @@ export function H2({ children }: { children: ReactNode }) {
 }
 export function PageTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
   return (
-    <div className="mb-4 flex items-center justify-between gap-2">
-      <h1 className="t-h1">{children}</h1>
-      {right}
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+      <h1 className="t-h1 min-w-0 break-words">{children}</h1>
+      {right && <div className="shrink-0">{right}</div>}
     </div>
   );
 }
@@ -50,13 +51,13 @@ export function Btn({ variant = "primary", className = "", ...p }: React.ButtonH
   const v = {
     primary: "btn-accent hover:brightness-105",
     secondary: "bg-surface text-ink ring-1 ring-line hover:bg-soft",
-    danger: "bg-expense text-white hover:opacity-90",
+    danger: "bg-expense text-[var(--on-expense)] hover:opacity-90",
     ghost: "text-ink hover:bg-soft",
   }[variant];
   return <button type="button" {...p} className={`pv-press min-h-11 rounded-full px-5 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed ${v} ${className}`} />;
 }
 
-const inputCls = "min-h-11 w-full rounded-[20px] border border-line bg-soft px-4 py-2 text-base text-ink outline-none transition-colors focus:border-[var(--accent)] focus:bg-soft";
+const inputCls = "min-h-11 w-full min-w-0 rounded-[20px] border border-line bg-soft px-4 py-2 text-base text-ink outline-none transition-colors focus:border-[var(--accent)] focus:bg-soft";
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
     <label className="mb-3 block">
@@ -99,11 +100,33 @@ export function Money({ cents, tone = false, className = "" }: { cents: number; 
 }
 
 export function Segmented<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { value: T; label: string }[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const active = options.findIndex((o) => o.value === value);
+  const ind = useIndicator(ref, active, options.length);
+  const [edges, setEdges] = useState({ l: false, r: false });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setEdges({ l: el.scrollLeft > 2, r: el.scrollLeft + el.clientWidth < el.scrollWidth - 2 });
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    el.addEventListener("scroll", check, { passive: true });
+    return () => { ro.disconnect(); el.removeEventListener("scroll", check); };
+  }, [options.length]);
+  // La pestaña activa siempre queda a la vista (sin mover la página en vertical).
+  useEffect(() => {
+    const el = ref.current;
+    const it = el?.querySelectorAll<HTMLElement>("[data-ind-item]")[active];
+    if (!el || !it || el.scrollWidth <= el.clientWidth) return;
+    el.scrollTo({ left: it.offsetLeft - (el.clientWidth - it.offsetWidth) / 2, behavior: "smooth" });
+  }, [active]);
   return (
-    <div role="tablist" className="mb-3 flex gap-1 overflow-x-auto rounded-full bg-soft p-1 hide-scroll">
+    <div ref={ref} role="tablist" className={`relative mb-3 flex gap-1 overflow-x-auto rounded-full bg-soft p-1 hide-scroll ${edges.l ? "fade-l" : ""} ${edges.r ? "fade-r" : ""}`}>
+      <span aria-hidden="true" className="pv-indicator absolute bottom-1 left-0 top-1 rounded-full bg-accent shadow-soft" style={ind} />
       {options.map((o) => (
-        <button key={o.value} type="button" role="tab" aria-selected={value === o.value} onClick={() => onChange(o.value)}
-          className={`pv-press min-h-10 flex-1 whitespace-nowrap rounded-full px-4 text-sm font-semibold transition-colors ${value === o.value ? "bg-accent text-onaccent shadow-soft" : "text-muted"}`}>
+        <button key={o.value} data-ind-item type="button" role="tab" aria-selected={value === o.value} onClick={() => onChange(o.value)}
+          className={`pv-press relative min-h-11 flex-1 whitespace-nowrap rounded-full px-4 text-sm font-semibold transition-colors duration-200 ${value === o.value ? "text-onaccent" : "text-muted"}`}>
           {o.label}
         </button>
       ))}
@@ -112,14 +135,19 @@ export function Segmented<T extends string>({ value, onChange, options }: { valu
 }
 
 export function Modal({ open, title, children, onClose }: { open: boolean; title: string; children: ReactNode; onClose: () => void }) {
-  if (!open || typeof document === "undefined") return null;
+  const { mounted, closing } = usePresence(open);
+  // Durante la salida se sigue mostrando lo último que tuvo (quien lo abre suele vaciar su estado al cerrar).
+  const last = useRef(children);
+  if (open) last.current = children;
+  if (!mounted || typeof document === "undefined") return null;
+  const close = closing ? undefined : onClose;
   // Portal a <body>: el contenedor animado de la página crea su propio contexto de apilamiento y,
   // sin portal, la barra de navegación flotante tapaba los botones del diálogo.
   return createPortal(
-    <div className="pv-backdrop fixed inset-0 z-[70] flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true" aria-label={title} onClick={onClose}>
-      <div className="pv-sheet max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-[28px] bg-surface glass-solid p-5 ring-1 ring-line sm:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+    <div data-closing={closing || undefined} className="pv-backdrop fixed inset-0 z-[70] flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true" aria-label={title} onClick={close}>
+      <div data-closing={closing || undefined} className="pv-sheet glass max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-[28px] glass-solid p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] ring-1 ring-line sm:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
         <h3 className="t-h2 mb-3 !text-lg">{title}</h3>
-        {children}
+        {open ? children : last.current}
       </div>
     </div>,
     document.body,

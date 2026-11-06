@@ -97,9 +97,9 @@ function Recordatorios() {
       {list.length === 0 ? <Muted className="mb-3">Sin recordatorios.</Muted> : (
         <ul className="mb-3 flex flex-wrap gap-2">
           {list.map((r) => (
-            <li key={r} className="flex min-h-9 items-center gap-1 rounded-full bg-soft py-1 pl-3 pr-1 text-sm">
+            <li key={r} className="flex min-h-11 items-center gap-1 rounded-full bg-soft py-1 pl-3 pr-1 text-sm">
               <span>{r}</span>
-              <button type="button" aria-label={`Quitar ${r}`} onClick={() => update(removeReminder(list, r))} className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:text-ink">×</button>
+              <button type="button" aria-label={`Quitar ${r}`} onClick={() => update(removeReminder(list, r))} className="-my-1 flex h-11 w-11 items-center justify-center rounded-full text-muted hover:text-ink">×</button>
             </li>
           ))}
         </ul>

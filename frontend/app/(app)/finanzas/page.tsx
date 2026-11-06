@@ -46,7 +46,7 @@ function DebtPlanCard() {
       {loading && !data ? <Skeleton className="h-40" /> : data && (
         <>
           <p className="text-2xl font-bold leading-tight">
-            {data.feasible ? <>Libre de deudas en <span className="serif text-3xl capitalize">{fmtMonth(data.target_month)}</span></> : lastDebtMonth ? <>Al ritmo actual: <span className="serif text-3xl capitalize">{fmtMonth(lastDebtMonth)}</span></> : <>Meta: <span className="serif text-3xl capitalize">{fmtMonth(data.target_month)}</span></>}
+            {data.feasible ? <>Libre de deudas en <span className="serif text-3xl">{fmtMonth(data.target_month)}</span></> : lastDebtMonth ? <>Al ritmo actual: <span className="serif text-3xl">{fmtMonth(lastDebtMonth)}</span></> : <>Meta: <span className="serif text-3xl">{fmtMonth(data.target_month)}</span></>}
           </p>
           <div className="mt-3 flex items-center justify-between gap-2 rounded-[20px] bg-soft p-3 text-sm">
             <div><p className="text-xs text-muted">Necesario al mes</p><p className="num"><Money cents={data.total_monthly_needed_cents} /></p></div>
@@ -85,7 +85,7 @@ export default function Finanzas() {
   const d = dash.data;
 
   return (
-    <div className="stagger space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
+    <div className="space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
       <header className="lg:col-span-2">
         <h1 className="t-h1">Tus <span className="serif">finanzas</span></h1>
       </header>
@@ -94,10 +94,10 @@ export default function Finanzas() {
         {!d ? <Skeleton className="h-28" /> : (
           <>
             <p className="text-sm text-muted">Dinero disponible</p>
-            <p className="text-5xl font-bold"><CountMoney cents={d.available_cents} /></p>
+            <p className="text-4xl font-bold min-[400px]:text-5xl"><CountMoney cents={d.available_cents} /></p>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <div className="rounded-[20px] bg-soft p-3"><p className="text-[11px] text-muted">Deuda total</p><p className="num text-sm"><Money cents={d.total_debt_cents} /></p></div>
-              <div className="rounded-[20px] bg-soft p-3"><p className="text-[11px] text-muted">Patrimonio</p><p className="num text-sm"><Money cents={d.net_worth_cents} tone /></p></div>
+              <div className="rounded-[20px] bg-soft p-3"><p className="text-xs text-muted">Deuda total</p><p className="num text-sm"><Money cents={d.total_debt_cents} /></p></div>
+              <div className="rounded-[20px] bg-soft p-3"><p className="text-xs text-muted">Patrimonio</p><p className="num text-sm"><Money cents={d.net_worth_cents} tone /></p></div>
             </div>
           </>
         )}
@@ -113,7 +113,7 @@ export default function Finanzas() {
             <ul className="min-w-0 flex-1 space-y-1">
               {slices.map((s, i) => (
                 <li key={s.id}>
-                  <button onClick={() => goCat(s.id)} className="flex min-h-8 w-full items-center gap-2 text-left text-xs">
+                  <button onClick={() => goCat(s.id)} className="flex min-h-11 w-full items-center gap-2 text-left text-xs">
                     <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />
                     <span className="min-w-0 flex-1 truncate">{s.label}</span>
                     <span className="tabular-nums text-muted">{pctOf(s.value, catTotal)}%</span>
@@ -136,7 +136,7 @@ export default function Finanzas() {
                     <GrowBar pct={pctOf(m.income_cents, maxBar)} color="bg-accent" title={`Ingresos ${formatCents(m.income_cents)}`} />
                     <GrowBar pct={pctOf(m.expense_cents, maxBar)} color="bg-white/30" title={`Gastos ${formatCents(m.expense_cents)}`} />
                   </div>
-                  <span className="text-[10px] uppercase text-muted">{mlabel(m.month)}</span>
+                  <span className="text-xs uppercase text-muted">{mlabel(m.month)}</span>
                 </div>
               ))}
             </div>
@@ -153,7 +153,7 @@ export default function Finanzas() {
           <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
             {d.cards.map((c) => (
               <Card key={c.id}>
-                <div className="flex items-baseline justify-between"><p className="font-semibold">{c.name}{c.overdue && <span className="ml-2 rounded-full bg-expense px-2 py-0.5 text-xs font-semibold text-white">Vencido</span>}</p><p className="num"><Money cents={c.owed_cents} /></p></div>
+                <div className="flex items-baseline justify-between gap-2"><p className="min-w-0 font-semibold">{c.name}{c.overdue && <span className="ml-2 inline-block rounded-full bg-expense/15 px-2 py-0.5 text-xs font-semibold text-expense ring-1 ring-expense/30">Vencido</span>}</p><p className="num shrink-0"><Money cents={c.owed_cents} /></p></div>
                 {c.credit_limit_cents != null && (
                   <>
                     <div className="my-2"><Bar pct={pctOf(c.owed_cents, c.credit_limit_cents)} over={c.owed_cents > c.credit_limit_cents} label="Uso del límite" /></div>

@@ -93,6 +93,9 @@ export default function Deudas() {
   const [cancel, setCancel] = useState<Obligation | null>(null);
   const [skip, setSkip] = useState<Obligation | null>(null);
   const [edit, setEdit] = useState<Obligation | null>(null);
+  const [act, setAct] = useState<Obligation | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const today = todayISO();
   const dash = useLoad(() => api.dashboard(), []);
   const cardInfo = new Map((dash.data?.cards || []).map((c) => [c.id, c]));
   const [busy, setBusy] = useState(false);
@@ -157,10 +160,10 @@ export default function Deudas() {
               return (
                 <li key={a.id} className="flex items-center justify-between gap-2 py-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium">{a.name}{ci?.overdue && <span className="ml-2 rounded-full bg-expense px-2 py-0.5 text-xs font-semibold text-white">Vencido</span>}</p>
+                    <p className="text-sm font-medium">{a.name}{ci?.overdue && <span className="ml-2 rounded-full bg-expense/15 px-2 py-0.5 text-xs font-semibold text-expense ring-1 ring-expense/30">Vencido</span>}</p>
                     <p className="text-xs text-muted">{SUBTYPE_LABEL[a.subtype]}</p>
                     {ci?.statement_due_cents != null && <p className="text-xs text-muted">Pago para no generar intereses {formatCents(ci.statement_due_cents)}</p>}
-                    {(ci?.minimum_due_cents ?? 0) > 0 && <p className="text-xs text-muted" title="Estimación: no incluye intereses ni IVA">Pago mínimo (estimado) {formatCents(ci?.minimum_due_cents ?? 0)} · Estimación: no incluye intereses ni IVA</p>}
+                    {(ci?.minimum_due_cents ?? 0) > 0 && <p className="text-xs text-muted">Pago mínimo estimado* {formatCents(ci?.minimum_due_cents ?? 0)}</p>}
                     {(ci?.deferred_cents ?? 0) > 0 && <p className="text-xs text-muted">MSI por facturar {formatCents(ci?.deferred_cents ?? 0)}</p>}
                   </div>
                   <p className="shrink-0 font-semibold"><Money cents={a.balance_cents} /></p>
@@ -168,6 +171,7 @@ export default function Deudas() {
               );
             })}
           </ul>
+          {liabs.some((a) => (cardInfo.get(a.id)?.minimum_due_cents ?? 0) > 0) && <p className="mt-2 text-xs text-muted">* Estimación: no incluye intereses ni IVA.</p>}
         </Card>
       )}
 
@@ -175,7 +179,7 @@ export default function Deudas() {
       {!up.data || up.data.length === 0 ? <Empty title="Nada por vencer" /> : (
         <Card className="mb-4">
           <ul className="divide-y divide-line">
-            {up.data.map((u, i) => (
+            {(showAll ? up.data : up.data.slice(0, 8)).map((u, i) => (
               <li key={`${u.source}-${u.ref_id}-${u.due_date}-${i}`} className="flex items-center justify-between py-2">
                 <div>
                   <p className="text-sm font-medium">{u.name}{u.source === "card" ? " (tarjeta)" : ""}</p>
@@ -185,33 +189,43 @@ export default function Deudas() {
               </li>
             ))}
           </ul>
+          {up.data.length > 8 && (
+            <Btn variant="ghost" className="mt-1 w-full" onClick={() => setShowAll((v) => !v)}>{showAll ? "Ver menos" : `Ver los ${up.data.length}`}</Btn>
+          )}
         </Card>
       )}
 
       <H2>Obligaciones pendientes</H2>
       {!obl.data || obl.data.length === 0 ? <Empty title="Sin obligaciones" hint="Registra recibos, cuotas o ingresos esperados." action={<Btn onClick={() => setCreate(true)}>Crear</Btn>} /> : (
-        <ul className="space-y-2">
-          {obl.data.map((o) => (
-            <li key={o.id}>
-              <Card>
-                <div className="flex justify-between gap-2">
-                  <div className="min-w-0"><p className="truncate font-medium">{o.name}</p><p className="text-xs text-muted">{KIND_ES[o.kind]} · {fmtDate(o.due_date)} · {REC_ES[o.recurrence]}</p></div>
-                  <p className="shrink-0 font-semibold">{o.direction === "inflow" ? "+" : "−"}<Money cents={o.amount_cents} /></p>
-                </div>
-                <div className="mt-2 flex gap-2">
-                  <Btn className="flex-1" onClick={() => openSettle(o)}>{o.direction === "inflow" ? "Cobrar" : "Pagar"}</Btn>
-                  <Btn variant="secondary" className="flex-1" onClick={() => setEdit(o)}>Editar</Btn>
-                  <Btn variant="secondary" className="flex-1" onClick={() => { setErr(null); setCancel(o); }}>Cancelar</Btn>
-                </div>
-                {o.recurrence !== "none" && (
-                  <Btn variant="ghost" className="mt-1 w-full" onClick={() => { setErr(null); setSkip(o); }}>Omitir este mes</Btn>
-                )}
-              </Card>
-            </li>
-          ))}
-        </ul>
+        <Card className="overflow-hidden !p-0">
+          <ul className="divide-y divide-line">
+            {obl.data.map((o) => (
+              <li key={o.id}>
+                <button type="button" onClick={() => { setErr(null); setAct(o); }} className="pv-press flex min-h-16 w-full items-center justify-between gap-3 px-4 py-3 text-left active:bg-soft">
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{o.name}</span>
+                    <span className={`block text-xs ${o.due_date < today ? "font-semibold text-expense" : "text-muted"}`}>{o.due_date < today ? "Vencido · " : ""}{fmtDate(o.due_date)} · {KIND_ES[o.kind]}{o.recurrence !== "none" ? ` · ${REC_ES[o.recurrence]}` : ""}</span>
+                  </span>
+                  <span className="shrink-0 font-semibold">{o.direction === "inflow" ? "+" : "−"}<Money cents={o.amount_cents} /></span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
-      <Muted className="mt-2">Al liquidar se crea el movimiento y, si es recurrente, la siguiente obligación.</Muted>
+      <Muted className="mt-2">Toca una obligación para pagarla, editarla u omitirla. Al pagar se crea el movimiento y, si es recurrente, la siguiente.</Muted>
+
+      <Modal open={!!act} title={act?.name ?? ""} onClose={() => setAct(null)}>
+        {act && (
+          <div className="space-y-2">
+            <p className="mb-3 text-sm text-muted">{KIND_ES[act.kind]} · vence {fmtDate(act.due_date)} · {formatCents(act.amount_cents)}</p>
+            <Btn className="w-full" onClick={() => { const o = act; setAct(null); openSettle(o); }}>{act.direction === "inflow" ? "Cobrar" : "Pagar"}</Btn>
+            <Btn variant="secondary" className="w-full" onClick={() => { const o = act; setAct(null); setEdit(o); }}>Editar</Btn>
+            {act.recurrence !== "none" && <Btn variant="secondary" className="w-full" onClick={() => { const o = act; setAct(null); setSkip(o); }}>Omitir este mes</Btn>}
+            <Btn variant="ghost" className="w-full !text-expense" onClick={() => { const o = act; setAct(null); setCancel(o); }}>Cancelar obligación</Btn>
+          </div>
+        )}
+      </Modal>
 
       <Modal open={create} title="Nueva obligación" onClose={() => setCreate(false)}>
         <div className="max-h-[75vh] overflow-y-auto"><ObligationForm accounts={all} onDone={() => { setCreate(false); reloadAll(); }} /></div>

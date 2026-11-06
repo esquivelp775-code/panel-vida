@@ -40,12 +40,12 @@ export default function Calendario() {
   const selDay = sel ? byDate.get(sel) : undefined;
 
   return (
-    <div onPointerDown={(e) => { startX.current = e.clientX; }}
+    <div onPointerDown={(e) => { startX.current = e.currentTarget.contains(e.target as Node) ? e.clientX : null; }}
       onPointerUp={(e) => { if (startX.current !== null) { const dx = e.clientX - startX.current; if (Math.abs(dx) > 60) go(dx < 0 ? 1 : -1); } startX.current = null; }}
       onPointerCancel={() => { startX.current = null; }} style={{ touchAction: "pan-y" }}>
       <div className="mb-2 flex items-center justify-between">
         <Btn variant="ghost" onClick={() => go(-1)} aria-label="Mes anterior">‹</Btn>
-        <h1 className="text-lg font-bold capitalize">{fmtMonth(month)}</h1>
+        <h1 className="text-lg font-bold">{fmtMonth(month)}</h1>
         <Btn variant="ghost" onClick={() => go(1)} aria-label="Mes siguiente">›</Btn>
       </div>
       <div className="mb-3 flex justify-center gap-4 text-sm">
@@ -71,7 +71,7 @@ export default function Calendario() {
           </div>
         )}
       </div>
-      <p className="mt-3 text-center text-[11px] text-muted">
+      <p className="mt-3 text-center text-xs text-muted">
         <span className="text-income">●</span> ingreso <span className="text-expense">●</span> gasto <span className="text-warn">●</span> vencimiento <span className="text-muted">●</span> pendiente <span className="text-muted/50">●</span> hábitos
       </p>
       <Sheet open={!!sel} title={sel ? new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${sel}T12:00:00`)) : ""} onClose={() => setSel(null)}>
@@ -89,7 +89,7 @@ function EventRow({ e }: { e: CalEvent }) {
       <span aria-hidden="true">{icon}</span>
       <p className="min-w-0 flex-1 truncate text-sm font-medium">{e.title}</p>
       {e.amount_cents != null && <span className={`text-sm font-semibold ${e.direction === "inflow" ? "text-ink" : ""}`}>{e.direction === "inflow" ? "+" : "−"}{formatCents(e.amount_cents)}</span>}
-      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${cls}`}>{label}</span>
+      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${cls}`}>{label}</span>
     </li>
   );
 }

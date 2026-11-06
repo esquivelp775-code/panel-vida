@@ -196,13 +196,13 @@ function Importar() {
                 {locked && <p className="mt-1 text-xs text-muted">Ya importada</p>}
                 {r.status === "installment" && (
                   <p className="mt-1 text-xs">
-                    <span className="rounded-full bg-ink !text-onink px-2 py-0.5 font-semibold text-white">Mensualidad MSI</span>{" "}
+                    <span className="rounded-full bg-ink px-2 py-0.5 font-semibold text-onink">Mensualidad MSI</span>{" "}
                     Parece la mensualidad de una compra a meses ya registrada completa; importarla duplicaría el gasto.
                   </p>
                 )}
                 {r.status === "duplicate" && (
                   <p className="mt-1 text-xs">
-                    <span className="rounded-full bg-warn px-2 py-0.5 font-semibold text-white">Posible duplicado</span>{" "}
+                    <span className="rounded-full bg-warn/20 px-2 py-0.5 font-semibold text-warn ring-1 ring-warn/40">Posible duplicado</span>{" "}
                     {r.duplicate_of != null && <Link href={`/movimientos/detalle/?id=${r.duplicate_of}`} className="font-semibold text-ink underline">Ver movimiento</Link>}
                   </p>
                 )}

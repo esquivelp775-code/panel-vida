@@ -17,5 +17,7 @@ export function obligationTargets<T extends Acc>(kind: string, accounts: T[]): T
 /** Cuentas con las que se puede liquidar: un recibo también se paga con tarjeta; una deuda, sólo con dinero. */
 export function settleAccounts<T extends Acc>(kind: string, accounts: T[]): T[] {
   const withCard = kind === "bill" || kind === "other";
-  return accounts.filter((a) => a.account_class === "asset" || (withCard && a.subtype === "credit_card"));
+  const order = ["checking", "cash", "savings", "credit_card", "investment"];
+  return accounts.filter((a) => a.account_class === "asset" || (withCard && a.subtype === "credit_card"))
+    .map((a, i) => ({ a, i })).sort((x, y) => order.indexOf(x.a.subtype) - order.indexOf(y.a.subtype) || x.i - y.i).map((x) => x.a);
 }

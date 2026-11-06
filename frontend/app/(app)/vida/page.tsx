@@ -1,12 +1,13 @@
 "use client";
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api, fmtDate, todayISO, type Area, type Habit, type Priority, type Task } from "@/lib/api";
 import { addDays } from "@/lib/calendar";
 import { AREAS, AREA_COLOR, AREA_LABEL, groupTasks } from "@/lib/tasks";
 import { errMsg, useLoad } from "@/lib/useLoad";
-import { Btn, Card, Confirm, Empty, ErrorBox, Field, Input, Muted, Select, Textarea, useToast } from "@/components/ui";
+import { Btn, Card, Confirm, Empty, ErrorBox, Field, Input, Muted, Segmented, Select, Textarea, useToast } from "@/components/ui";
 import { CheckBox, Ring, Sheet, Skeleton } from "@/components/anim";
+import { useIndexDirection } from "@/components/motion";
 
 type Tab = "tasks" | "habits";
 
@@ -14,8 +15,14 @@ export default function Page() {
   return <Suspense fallback={null}><Vida /></Suspense>;
 }
 
+const TABS: { value: Tab; label: string }[] = [{ value: "tasks", label: "Pendientes" }, { value: "habits", label: "Hábitos" }];
+
 function Vida() {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("tasks");
+  const dir = useIndexDirection(TABS.findIndex((t) => t.value === tab));
+  // La URL acompaña a la pestaña: así el menú lateral resalta la correcta y "atrás" funciona.
+  function pick(t: Tab) { setTab(t); router.replace(t === "habits" ? "/vida/?tab=habitos" : "/vida/"); }
   // Reacciona a ?tab= también al navegar desde el menú lateral (antes sólo se leía al montar).
   const q = useSearchParams().get("tab");
   useEffect(() => {
@@ -25,13 +32,8 @@ function Vida() {
   return (
     <>
       <h1 className="t-h1 mb-4"><span className="serif">Vida</span> diaria</h1>
-      <div role="tablist" className="relative mb-4 grid grid-cols-2 rounded-full bg-soft p-1">
-        {([["tasks", "Pendientes"], ["habits", "Hábitos"]] as const).map(([k, l]) => (
-          <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`relative z-10 min-h-11 text-sm font-semibold transition-colors duration-200 ${tab === k ? "text-onaccent" : "text-muted"}`}>{l}</button>
-        ))}
-        <span className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full bg-accent transition-transform duration-300 ease-[cubic-bezier(.22,1,.36,1)]" style={{ transform: `translateX(${["tasks", "habits"].indexOf(tab) * 100}%)` }} />
-      </div>
-      <div key={tab} className="pv-page">{tab === "tasks" ? <Tasks /> : <Habits />}</div>
+      <Segmented value={tab} onChange={pick} options={TABS} />
+      <div key={tab} data-dir={dir} className="pv-page">{tab === "tasks" ? <Tasks /> : <Habits />}</div>
     </>
   );
 }
@@ -96,7 +98,7 @@ function Tasks() {
         {week.map((d, i) => (
           <button type="button" key={d} aria-pressed={day === d} aria-label={`${DOW3[i]} ${Number(d.slice(8))}`} onClick={() => setDay(day === d ? null : d)}
             className={`pv-press flex h-16 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-full text-xs font-semibold ${day === d ? "bg-ink text-onink shadow-soft" : "bg-surface text-muted ring-1 ring-line"}`}>
-            <span className="text-[11px] opacity-70">{DOW3[i]}</span>
+            <span className="text-xs opacity-70">{DOW3[i]}</span>
             <span className="num text-base">{Number(d.slice(8))}</span>
             {d === today && <span className={`h-1 w-1 rounded-full ${day === d ? "bg-onink" : "bg-ink"}`} />}
           </button>
@@ -109,13 +111,13 @@ function Tasks() {
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {([["Hoy", today], ["Mañana", addDays(today, 1)]] as const).map(([l, v]) => (
-            <button type="button" key={l} onClick={() => setDue(due === v ? "" : v)} className={`min-h-9 rounded-full px-3 text-xs font-semibold ring-1 ${due === v ? "bg-ink text-onink ring-ink" : "ring-ink/15"}`}>{l}</button>
+            <button type="button" key={l} onClick={() => setDue(due === v ? "" : v)} className={`min-h-11 rounded-full px-3 text-xs font-semibold ring-1 ${due === v ? "bg-ink text-onink ring-ink" : "ring-ink/15"}`}>{l}</button>
           ))}
-          <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} className="!min-h-9 !w-36 !py-1 !text-xs" aria-label="Fecha" />
-          <Select value={pri} onChange={(e) => setPri(e.target.value as Priority)} className="!min-h-9 !w-24 !py-1 !text-xs" aria-label="Prioridad">
+          <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} className="!min-h-11 !w-36 !py-1 !text-xs" aria-label="Fecha" />
+          <Select value={pri} onChange={(e) => setPri(e.target.value as Priority)} className="!min-h-11 !w-24 !py-1 !text-xs" aria-label="Prioridad">
             {(["low", "normal", "high"] as const).map((p) => <option key={p} value={p}>{PRI_LABEL[p]}</option>)}
           </Select>
-          <Select value={area} onChange={(e) => setArea(e.target.value as Area)} className="!min-h-9 !w-28 !py-1 !text-xs" aria-label="Área">
+          <Select value={area} onChange={(e) => setArea(e.target.value as Area)} className="!min-h-11 !w-28 !py-1 !text-xs" aria-label="Área">
             {AREAS.filter((a) => a !== "ryventis").map((a) => <option key={a} value={a}>{AREA_LABEL[a]}</option>)}
           </Select>
         </div>
@@ -129,7 +131,7 @@ function Tasks() {
           {section("Sin fecha", g.nodate)}
           {g.done.length > 0 && (
             <div className="mb-4">
-              <button onClick={() => setShowDone((s) => !s)} aria-expanded={showDone} className="mb-1 min-h-9 text-xs font-semibold uppercase tracking-wide text-muted">
+              <button onClick={() => setShowDone((s) => !s)} aria-expanded={showDone} className="mb-1 min-h-11 text-xs font-semibold uppercase tracking-wide text-muted">
                 Hechas · {g.done.length} <span className={`inline-block transition-transform ${showDone ? "rotate-90" : ""}`}>›</span>
               </button>
               {showDone && <Card className="!p-1"><ul className="divide-y divide-line">{g.done.map((t) => <TaskRow key={t.id} t={t} today={today} onFlip={() => flip(t)} onEdit={() => setEdit(t)} />)}</ul></Card>}
@@ -151,9 +153,9 @@ function TaskRow({ t, today, onFlip, onEdit }: { t: Task; today: string; onFlip:
     <li className="flex items-center gap-1">
       <CheckBox checked={done} onChange={onFlip} label={`${done ? "Reabrir" : "Completar"} ${t.title}`} />
       <button onClick={onEdit} className="min-h-11 min-w-0 flex-1 py-1 text-left">
-        <span className={`block truncate text-sm font-medium transition-all duration-300 ${done ? "text-muted line-through" : ""}`}>{t.priority === "high" && !done ? "❗ " : ""}{t.title}</span>
+        <span className={`line-clamp-2 text-sm font-medium leading-snug transition-colors duration-300 ${done ? "text-muted line-through" : ""}`}>{t.priority === "high" && !done ? "❗ " : ""}{t.title}</span>
         <span className="flex items-center gap-2 text-xs text-muted">
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${AREA_COLOR[t.area] || AREA_COLOR.otro}`}>{AREA_LABEL[t.area] || t.area}</span>
+          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${AREA_COLOR[t.area] || AREA_COLOR.otro}`}>{AREA_LABEL[t.area] || t.area}</span>
           {t.due_date && <span className={t.due_date < today && !done ? "font-semibold text-expense" : ""}>{fmtDate(t.due_date)}</span>}
         </span>
       </button>
@@ -169,14 +171,14 @@ function EditForm({ task, onSaved, onDelete }: { task: Task; onSaved: () => void
     e.preventDefault();
     if (!f.title.trim()) return;
     setBusy(true);
-    try { await api.updateTask(task.id, { title: f.title.trim(), notes: f.notes.trim() || undefined, due_date: f.due || null, priority: f.pri, area: f.area }); onSaved(); }
+    try { await api.updateTask(task.id, { title: f.title.trim(), notes: f.notes.trim() || null, due_date: f.due || null, priority: f.pri, area: f.area }); onSaved(); }
     catch (err) { toast(errMsg(err), "err"); setBusy(false); }
   }
   return (
     <form onSubmit={save}>
       <Field label="Título"><Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} maxLength={200} /></Field>
       <Field label="Notas"><Textarea rows={2} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></Field>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 gap-x-2 min-[400px]:grid-cols-3">
         <Field label="Fecha"><Input type="date" value={f.due} onChange={(e) => setF({ ...f, due: e.target.value })} /></Field>
         <Field label="Prioridad"><Select value={f.pri} onChange={(e) => setF({ ...f, pri: e.target.value as Priority })}>{(["low", "normal", "high"] as const).map((p) => <option key={p} value={p}>{PRI_LABEL[p]}</option>)}</Select></Field>
         <Field label="Área"><Select value={f.area} onChange={(e) => setF({ ...f, area: e.target.value as Area })}>{AREAS.filter((a) => a !== "ryventis").map((a) => <option key={a} value={a}>{AREA_LABEL[a]}</option>)}</Select></Field>
@@ -259,7 +261,7 @@ function Habits() {
                   const dow = DIA[new Date(`${d.date}T12:00:00`).getDay()];
                   return (
                     <button key={d.date} onClick={() => toggle(h, d.date)} aria-pressed={d.done} aria-label={`${h.name} ${d.date}`} className="flex min-h-11 flex-col items-center gap-1">
-                      <span className="text-[10px] text-muted">{dow}</span>
+                      <span className="text-xs text-muted">{dow}</span>
                       <span key={pop === `${h.id}${d.date}` ? "p" : "n"} className={`flex h-8 w-8 items-center justify-center rounded-full text-sm transition-colors ${d.done ? "bg-ink text-onink" : "bg-soft"} ${pop === `${h.id}${d.date}` ? "pv-pop" : ""}`}>{d.done ? "✓" : ""}</span>
                     </button>
                   );

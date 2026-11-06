@@ -10,6 +10,7 @@ import { STAGES, STAGE_LABEL, STAGE_TINT, dueLabel, initials, pct, stageIndex } 
 import { errMsg, useLoad } from "@/lib/useLoad";
 import { Btn, Card, Confirm, Empty, ErrorBox, Field, H2, Input, Money, Muted, Segmented, Select, Textarea, useToast } from "@/components/ui";
 import { Sheet, Skeleton } from "@/components/anim";
+import { useIndexDirection } from "@/components/motion";
 
 type Tab = "resumen" | "clientes" | "proyectos" | "cobros" | "pendientes";
 const TABS: { value: Tab; label: string }[] = [
@@ -27,12 +28,13 @@ function Ryventis() {
   const [tab, setTab] = useState<Tab>("resumen");
   // Reacciona a ?tab= (también al navegar desde el menú lateral).
   useEffect(() => { setTab(TABS.some((t) => t.value === q) ? (q as Tab) : "resumen"); }, [q]);
+  const dir = useIndexDirection(TABS.findIndex((t) => t.value === tab));
   function pick(t: Tab) { setTab(t); router.replace(t === "resumen" ? "/ryventis/" : `/ryventis/?tab=${t}`); }
   return (
     <>
       <h1 className="t-h1 mb-4"><span className="serif">Ryventis</span></h1>
       <Segmented value={tab} onChange={pick} options={TABS} />
-      <div key={tab} className="pv-page">
+      <div key={tab} data-dir={dir} className="pv-page">
         {tab === "resumen" ? <Resumen go={pick} /> : tab === "clientes" ? <Clientes /> : tab === "proyectos" ? <Proyectos /> : tab === "cobros" ? <Cobros /> : <Board />}
       </div>
     </>
@@ -42,7 +44,7 @@ function Ryventis() {
 /* ---------------- Piezas comunes ---------------- */
 function StageBadge({ stage }: { stage: Stage }) {
   const c = STAGE_TINT[stage] || STAGE_TINT.nuevo;
-  return <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: `rgba(${c},.18)`, color: `rgb(${c})`, boxShadow: `inset 0 0 0 1px rgba(${c},.35)` }}>{STAGE_LABEL[stage]}</span>;
+  return <span className="rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: `rgba(${c},.18)`, color: `rgb(${c})`, boxShadow: `inset 0 0 0 1px rgba(${c},.35)` }}>{STAGE_LABEL[stage]}</span>;
 }
 function Avatar({ name }: { name: string }) {
   return <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-soft text-sm font-bold ring-1 ring-line" aria-hidden>{initials(name)}</span>;
@@ -55,7 +57,7 @@ function Progress({ value, label }: { value: number; label: string }) {
   );
 }
 function Kpi({ label, children, tone = "" }: { label: string; children: React.ReactNode; tone?: string }) {
-  return <div className={`rounded-[22px] bg-soft p-4 ring-1 ring-line ${tone}`}><p className="text-xs text-muted">{label}</p><p className="num mt-1 text-xl font-bold">{children}</p></div>;
+  return <div className={`rounded-[22px] bg-soft p-4 ring-1 ring-line ${tone}`}><p className="text-xs text-muted">{label}</p><p className="num mt-1 text-lg font-bold">{children}</p></div>;
 }
 
 /* ---------------- Resumen ---------------- */
@@ -132,7 +134,7 @@ function Clientes() {
   const [sel, setSel] = useState<number | null>(null);
   const today = todayISO();
   const needle = q.trim().toLowerCase();
-  const list = (data || []).filter((c) => !needle || `${c.name} ${c.company}`.toLowerCase().includes(needle));
+  const list = (data || []).filter((c) => !needle || `${c.name} ${c.company ?? ""}`.toLowerCase().includes(needle));
   return (
     <>
       <div className="mb-3 flex gap-2">
@@ -147,7 +149,7 @@ function Clientes() {
               <Avatar name={c.name} />
               <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{c.name}</span><span className="block truncate text-xs text-muted">{c.company || "Sin empresa"}</span></span>
               <span className="flex flex-col items-end gap-1"><StageBadge stage={c.stage} />
-                {c.next_step_date && <span className={`text-[11px] ${c.next_step_date <= today ? "font-semibold text-expense" : "text-muted"}`}>{fmtDate(c.next_step_date)}</span>}</span>
+                {c.next_step_date && <span className={`text-xs ${c.next_step_date <= today ? "font-semibold text-expense" : "text-muted"}`}>{fmtDate(c.next_step_date)}</span>}</span>
             </button></li>
           ))}
         </ul></Card>
@@ -216,7 +218,7 @@ function ClientDetailView({ id, onChanged, onDeleted }: { id: number; onChanged:
         {STAGES.map((k, i) => (
           <button key={k} type="button" disabled={busy} aria-pressed={c.stage === k} onClick={() => k !== c.stage && run(() => api.ryvUpdateClient(id, { stage: k }))} className="pv-press min-h-11 text-center">
             <span className="block h-1.5 rounded-full" style={{ background: i <= idx ? `rgb(${STAGE_TINT[k]})` : "var(--soft, rgba(128,128,128,.25))" }} />
-            <span className={`mt-1 block text-[11px] font-semibold ${i === idx ? "text-ink" : "text-muted"}`}>{STAGE_LABEL[k]}</span>
+            <span className={`mt-1 block text-xs font-semibold ${i === idx ? "text-ink" : "text-muted"}`}>{STAGE_LABEL[k]}</span>
           </button>
         ))}
       </div>
@@ -252,7 +254,7 @@ function ClientDetailView({ id, onChanged, onDeleted }: { id: number; onChanged:
 }
 
 function ClientEdit({ c, busy, onSave }: { c: ClientDetail; busy: boolean; onSave: (b: { next_step: string; next_step_date: string | null; source: string; notes: string }) => void }) {
-  const [f, setF] = useState({ next_step: c.next_step, date: c.next_step_date || "", source: c.source, notes: c.notes });
+  const [f, setF] = useState({ next_step: c.next_step ?? "", date: c.next_step_date || "", source: c.source ?? "", notes: c.notes ?? "" });
   return (
     <form className="mb-4" onSubmit={(e) => { e.preventDefault(); onSave({ next_step: f.next_step.trim(), next_step_date: f.date || null, source: f.source.trim(), notes: f.notes.trim() }); }}>
       <div className="grid grid-cols-[1fr_9rem] gap-2">
@@ -292,7 +294,7 @@ function Proyectos() {
     try { await api.ryvDeleteProject(del.id); toast("Proyecto eliminado"); setDel(null); await reload(); }
     catch (e) { toast(errMsg(e), "err"); setDel(null); } finally { setBusy(false); }
   }
-  const act = "pv-press min-h-9 rounded-full bg-soft px-3 text-xs font-semibold ring-1 ring-line disabled:opacity-50";
+  const act = "pv-press min-h-11 rounded-full bg-soft px-3 text-xs font-semibold ring-1 ring-line disabled:opacity-50";
   return (
     <>
       <Btn className="mb-3 w-full" onClick={() => setSheet({ edit: null })}>+ Proyecto</Btn>
@@ -310,9 +312,9 @@ function Proyectos() {
                       <button type="button" onClick={() => setSel(sel === p.id ? null : p.id)} aria-expanded={sel === p.id} className={`pv-press w-full rounded-[20px] bg-soft p-3 text-left ring-1 ring-line ${c.st === "terminado" ? "opacity-70" : ""}`}>
                         <span className="flex items-start justify-between gap-2"><span className="min-w-0"><span className="block truncate text-sm font-semibold">{p.name}</span>{p.client_name && <span className="block truncate text-xs text-muted">{p.client_name}</span>}</span>
                           <Money cents={p.amount_cents} className="shrink-0 text-sm font-semibold" /></span>
-                        {p.due_date && <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${p.due_date < today && c.st !== "terminado" ? "text-expense ring-expense/40" : p.due_date === today ? "ring-ink/40" : "text-muted ring-line"}`}>{dueLabel(p.due_date, today, (d) => new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short" }).format(new Date(`${d}T12:00:00`)))}</span>}
-                        <span className="mt-2 block"><span className="mb-1 flex justify-between text-[11px] text-muted"><span>Tareas {p.tasks_done}/{p.tasks_total}</span></span><Progress value={pct(p.tasks_done, p.tasks_total)} label={`Tareas de ${p.name}`} /></span>
-                        <span className="mt-2 block"><span className="mb-1 flex justify-between text-[11px] text-muted"><span>Cobrado</span><span><Money cents={p.collected_cents} /> / <Money cents={p.amount_cents} /></span></span><Progress value={pct(p.collected_cents, p.amount_cents)} label={`Cobro de ${p.name}`} /></span>
+                        {p.due_date && <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${p.due_date < today && c.st !== "terminado" ? "text-expense ring-expense/40" : p.due_date === today ? "ring-ink/40" : "text-muted ring-line"}`}>{dueLabel(p.due_date, today, (d) => new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short" }).format(new Date(`${d}T12:00:00`)))}</span>}
+                        <span className="mt-2 block"><span className="mb-1 flex justify-between text-xs text-muted"><span>Tareas {p.tasks_done}/{p.tasks_total}</span></span><Progress value={pct(p.tasks_done, p.tasks_total)} label={`Tareas de ${p.name}`} /></span>
+                        <span className="mt-2 block"><span className="mb-1 flex justify-between text-xs text-muted"><span>Cobrado</span><span><Money cents={p.collected_cents} /> / <Money cents={p.amount_cents} /></span></span><Progress value={pct(p.collected_cents, p.amount_cents)} label={`Cobro de ${p.name}`} /></span>
                       </button>
                       {sel === p.id && (
                         <div className="pv-in mt-1 flex flex-wrap gap-2 px-1">
@@ -456,8 +458,8 @@ function Cobros() {
       <div className="flex flex-col items-end gap-1">
         <Money cents={r.amount_cents} className="text-sm font-semibold" />
         {r.status === "por_cobrar" && <div className="flex gap-1">
-          <button className="pv-press min-h-9 rounded-full btn-accent px-3 text-xs font-semibold" onClick={() => setCol(r)}>Cobrar</button>
-          <button className="pv-press min-h-9 rounded-full px-2 text-xs text-muted" aria-label={`Eliminar ${r.description}`} onClick={() => setDel(r)}>🗑</button>
+          <button className="pv-press min-h-11 rounded-full btn-accent px-3 text-xs font-semibold" onClick={() => setCol(r)}>Cobrar</button>
+          <button className="pv-press min-h-11 rounded-full px-2 text-xs text-muted" aria-label={`Eliminar ${r.description}`} onClick={() => setDel(r)}>🗑</button>
         </div>}
       </div>
     </li>

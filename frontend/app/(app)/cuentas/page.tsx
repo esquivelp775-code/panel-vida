@@ -114,23 +114,24 @@ function Categories({ accounts, reload }: { accounts: Account[]; reload: () => v
   );
 }
 
+/** Fila de una lista agrupada: una sola tarjeta con divisores, en vez de una tarjeta por cuenta. */
 function Row({ a }: { a: Account }) {
   return (
     <li>
-      <Link href={`/cuentas/detalle/?id=${a.id}`} className="block">
-        <Card>
-          <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <p className="truncate font-medium">{a.name}</p>
-              <p className="text-xs text-muted">{SUBTYPE_LABEL[a.subtype] || a.subtype}{a.subtype === "credit_card" && a.credit_limit_cents ? ` · límite ${formatCents(a.credit_limit_cents)}` : ""}</p>
-            </div>
-            <p className="shrink-0 font-semibold"><Money cents={a.balance_cents} tone={a.account_class === "asset"} /></p>
-          </div>
-        </Card>
+      <Link href={`/cuentas/detalle/?id=${a.id}`} className="pv-press flex min-h-16 items-center justify-between gap-3 px-4 py-3 active:bg-soft">
+        <div className="min-w-0">
+          <p className="truncate font-medium">{a.name}</p>
+          <p className="truncate text-xs text-muted">{SUBTYPE_LABEL[a.subtype] || a.subtype}{a.subtype === "credit_card" && a.credit_limit_cents ? ` · límite ${formatCents(a.credit_limit_cents)}` : ""}</p>
+        </div>
+        <p className="shrink-0 font-semibold"><Money cents={a.balance_cents} tone={a.account_class === "asset"} /></p>
       </Link>
     </li>
   );
 }
+
+const group = (rows: Account[]) => (
+  <Card className="mb-4 overflow-hidden !p-0"><ul className="divide-y divide-line">{rows.map((a) => <Row key={a.id} a={a} />)}</ul></Card>
+);
 
 export default function Cuentas() {
   const { data, error, loading, reload } = useLoad(() => api.accounts(undefined, false), []);
@@ -145,9 +146,9 @@ export default function Cuentas() {
       <PageTitle right={<Btn onClick={() => setOpen(true)}>Nueva cuenta</Btn>}>Cuentas</PageTitle>
       <ErrorBox message={error} onRetry={reload} />
       <H2>Activos</H2>
-      {assets.length === 0 ? <Empty title="Sin cuentas" hint="Crea tu primera cuenta (efectivo, cheques, ahorro…)." action={<Btn onClick={() => setOpen(true)}>Crear cuenta</Btn>} /> : <ul className="mb-4 space-y-2">{assets.map((a) => <Row key={a.id} a={a} />)}</ul>}
+      {assets.length === 0 ? <Empty title="Sin cuentas" hint="Crea tu primera cuenta (efectivo, cheques, ahorro…)." action={<Btn onClick={() => setOpen(true)}>Crear cuenta</Btn>} /> : group(assets)}
       <H2>Tarjetas y pasivos</H2>
-      {liabs.length === 0 ? <Muted className="mb-4">Sin tarjetas ni deudas.</Muted> : <ul className="mb-4 space-y-2">{liabs.map((a) => <Row key={a.id} a={a} />)}</ul>}
+      {liabs.length === 0 ? <Muted className="mb-4">Sin tarjetas ni deudas.</Muted> : group(liabs)}
       <H2>Categorías</H2>
       <Categories accounts={all} reload={reload} />
       <Modal open={open} title="Nueva cuenta" onClose={() => setOpen(false)}>
